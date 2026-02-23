@@ -13,22 +13,19 @@ import { StatsModule } from './stats/stats.module';
 import { EventsModule } from './events/events.module';
 import { QrTokenModule } from './qr-token/qr-token.module';
 import { AvailabilityModule } from './availability/availability.module';
-import { MongoMemoryServer } from 'mongodb-memory-server';
-
-let mongoUri: string;
-
 @Module({
   imports: [
     MongooseModule.forRootAsync({
       useFactory: async () => {
         if (process.env.MONGODB_URI) {
-          mongoUri = process.env.MONGODB_URI;
-        } else {
-          const mongod = await MongoMemoryServer.create();
-          mongoUri = mongod.getUri();
-          console.log('Using in-memory MongoDB at:', mongoUri);
+          return { uri: process.env.MONGODB_URI };
         }
-        return { uri: mongoUri };
+        // In-memory MongoDB for local development only
+        const { MongoMemoryServer } = await import('mongodb-memory-server');
+        const mongod = await MongoMemoryServer.create();
+        const uri = mongod.getUri();
+        console.log('Using in-memory MongoDB at:', uri);
+        return { uri };
       },
     }),
     AuthModule,
