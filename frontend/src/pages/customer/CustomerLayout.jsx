@@ -7,17 +7,45 @@ import api from '../../services/api';
 export default function CustomerLayout() {
   const [searchParams] = useSearchParams();
   const businessId = searchParams.get('businessId');
+  const token = searchParams.get('token');
+  const type = searchParams.get('type');
+  const bookingType = type === 'meal' ? 'meal' : 'table';
   const [business, setBusiness] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [tokenValid, setTokenValid] = useState(null);
   const blobsRef = useRef(null);
 
   useEffect(() => {
-    if (!businessId) { setLoading(false); return; }
-    api.get(`/public/business/${businessId}`)
-      .then(({ data }) => setBusiness(data))
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, [businessId]);
+    const load = async () => {
+      if (token && !businessId) {
+        // Token-based access (status pages)
+        try {
+          const path = window.location.pathname;
+          if (path.includes('booking')) {
+            const { data } = await api.get(`/public/bookings/access/${token}`);
+            setBusiness({ _id: data.businessId });
+            setTokenValid(data);
+          } else {
+            const { data } = await api.get(`/public/waitlist/access/${token}`);
+            setBusiness({ _id: data.businessId });
+            setTokenValid(data);
+          }
+        } catch {
+          setTokenValid(false);
+        }
+        setLoading(false);
+        return;
+      }
+
+      if (!businessId) { setLoading(false); return; }
+      try {
+        const { data } = await api.get(`/public/business/${businessId}`);
+        setBusiness(data);
+      } catch {}
+      setLoading(false);
+    };
+    load();
+  }, [businessId, token]);
 
   // Floating gradient blobs
   useEffect(() => {
@@ -43,7 +71,7 @@ export default function CustomerLayout() {
     </div>
   );
 
-  if (!businessId) return (
+  if (!businessId && !token) return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-6">
       <div className="text-center">
         <div className="w-16 h-16 gradient-primary rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-glow">
@@ -51,6 +79,18 @@ export default function CustomerLayout() {
         </div>
         <h1 className="text-xl font-bold text-white">Invalid Link</h1>
         <p className="text-slate-400 mt-2 text-sm">Please scan a valid QR code from the restaurant.</p>
+      </div>
+    </div>
+  );
+
+  if (token && tokenValid === false) return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-6">
+      <div className="text-center">
+        <div className="w-16 h-16 bg-red-500/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
+          <Sparkles size={28} className="text-red-400" />
+        </div>
+        <h1 className="text-xl font-bold text-white">Invalid or Expired Token</h1>
+        <p className="text-slate-400 mt-2 text-sm">This link is no longer valid.</p>
       </div>
     </div>
   );
@@ -76,7 +116,7 @@ export default function CustomerLayout() {
 
       {/* Content */}
       <main className="relative z-10 px-6 pb-12">
-        <Outlet context={{ business, businessId }} />
+        <Outlet context={{ business, businessId: businessId || business?._id?.toString(), bookingType, token, tokenData: tokenValid }} />
       </main>
     </div>
   );

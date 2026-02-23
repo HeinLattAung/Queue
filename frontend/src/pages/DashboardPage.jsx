@@ -1,17 +1,22 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { Clock, Users, UtensilsCrossed, CheckCircle2, ArrowRight, TrendingUp, RefreshCw } from 'lucide-react';
+import { Clock, Users, UtensilsCrossed, CheckCircle2, ArrowRight, TrendingUp, RefreshCw, ThumbsUp, ThumbsDown, X } from 'lucide-react';
 import { StaggerContainer, StaggerItem } from '../components/animation/StaggerContainer';
 import useCountUp from '../hooks/useCountUp';
+import useSocket from '../hooks/useSocket';
+import useAuthStore from '../store/authStore';
 import api from '../services/api';
 
 const statusConfig = {
   serving: { bg: 'bg-emerald-50', border: 'border-emerald-200/60', text: 'text-emerald-600', dot: 'bg-emerald-500' },
   waiting: { bg: 'bg-amber-50', border: 'border-amber-200/60', text: 'text-amber-600', dot: 'bg-amber-500' },
+  approved: { bg: 'bg-green-50', border: 'border-green-200/60', text: 'text-green-600', dot: 'bg-green-500' },
   pending: { bg: 'bg-blue-50', border: 'border-blue-200/60', text: 'text-blue-600', dot: 'bg-blue-500' },
   confirmed: { bg: 'bg-blue-50', border: 'border-blue-200/60', text: 'text-blue-600', dot: 'bg-blue-500' },
+  arrived: { bg: 'bg-indigo-50', border: 'border-indigo-200/60', text: 'text-indigo-600', dot: 'bg-indigo-500' },
   completed: { bg: 'bg-gray-50', border: 'border-gray-200/60', text: 'text-gray-500', dot: 'bg-gray-400' },
   cancelled: { bg: 'bg-red-50', border: 'border-red-200/60', text: 'text-red-500', dot: 'bg-red-400' },
+  rejected: { bg: 'bg-red-50', border: 'border-red-200/60', text: 'text-red-500', dot: 'bg-red-400' },
 };
 
 function AnimatedValue({ value }) {
@@ -20,12 +25,19 @@ function AnimatedValue({ value }) {
 }
 
 export default function DashboardPage() {
+  const { user } = useAuthStore();
   const [stats, setStats] = useState({ bookingCount: 0, waitlistCount: 0, servingCount: 0, completedCount: 0 });
   const [bookings, setBookings] = useState([]);
   const [waitlist, setWaitlist] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [toast, setToast] = useState(null);
+  const [rejectModal, setRejectModal] = useState(null);
+  const [rejectReason, setRejectReason] = useState('');
 
-  const fetchData = async () => {
+  const businessId = user?.businessId;
+  const { on, off } = useSocket(businessId ? `business:${businessId}` : null);
+
+  const fetchData = useCallback(async () => {
     try {
       const [statsRes, bookingsRes, waitlistRes] = await Promise.all([
         api.get('/stats/dashboard'),
@@ -37,44 +49,112 @@ export default function DashboardPage() {
       setWaitlist(waitlistRes.data);
     } catch (err) { console.error(err); }
     setLoading(false);
-  };
+  }, []);
 
-  useEffect(() => { fetchData(); }, []);
+  useEffect(() => { fetchData(); }, [fetchData]);
+
+  // Real-time updates
+  useEffect(() => {
+    const handleBooking = (data) => {
+      setToast({ message: `Booking updated: ${data.customerName}`, type: 'booking' });
+      fetchData();
+    };
+    const handleWaitlist = (data) => {
+      setToast({ message: `Waitlist updated: ${data.customerName}`, type: 'waitlist' });
+      fetchData();
+    };
+
+    on('booking:updated', handleBooking);
+    on('waitlist:updated', handleWaitlist);
+    on('availability:changed', fetchData);
+
+    return () => {
+      off('booking:updated', handleBooking);
+      off('waitlist:updated', handleWaitlist);
+      off('availability:changed', fetchData);
+    };
+  }, [on, off, fetchData]);
+
+  // Auto-dismiss toast
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 3000);
+    return () => clearTimeout(t);
+  }, [toast]);
 
   const updateBookingStatus = async (id, status) => { await api.put(`/bookings/${id}/status`, { status }); fetchData(); };
   const updateWaitlistStatus = async (id, status) => { await api.put(`/waitlist/${id}/status`, { status }); fetchData(); };
+  const approveWaitlist = async (id) => { await api.put(`/waitlist/${id}/approve`); fetchData(); };
+  const rejectWaitlist = async (id) => {
+    await api.put(`/waitlist/${id}/reject`, { reason: rejectReason });
+    setRejectModal(null);
+    setRejectReason('');
+    fetchData();
+  };
 
   const statCards = [
-    { label: 'Currently Serving', value: stats.servingCount, icon: UtensilsCrossed, gradient: 'from-emerald-500 to-teal-600', bg: 'bg-emerald-50', change: '+12%' },
-    { label: 'In Waitlist', value: stats.waitlistCount, icon: Clock, gradient: 'from-amber-500 to-orange-600', bg: 'bg-amber-50', change: '+5%' },
-    { label: 'Bookings Today', value: stats.bookingCount, icon: Users, gradient: 'from-blue-500 to-indigo-600', bg: 'bg-blue-50', change: '+8%' },
-    { label: 'Completed', value: stats.completedCount, icon: CheckCircle2, gradient: 'from-gray-400 to-gray-600', bg: 'bg-gray-50', change: '' },
+    { label: 'Currently Serving', value: stats.servingCount, icon: UtensilsCrossed, gradient: 'from-emerald-500 to-teal-600', change: '+12%' },
+    { label: 'In Waitlist', value: stats.waitlistCount, icon: Clock, gradient: 'from-amber-500 to-orange-600', change: '+5%' },
+    { label: 'Bookings Today', value: stats.bookingCount, icon: Users, gradient: 'from-blue-500 to-indigo-600', change: '+8%' },
+    { label: 'Completed', value: stats.completedCount, icon: CheckCircle2, gradient: 'from-gray-400 to-gray-600', change: '' },
   ];
 
   return (
     <AnimatePresence mode="wait">
+      {/* Toast Notification */}
+      <AnimatePresence>
+        {toast && (
+          <motion.div
+            initial={{ opacity: 0, y: -20, x: '-50%' }}
+            animate={{ opacity: 1, y: 0, x: '-50%' }}
+            exit={{ opacity: 0, y: -20, x: '-50%' }}
+            className="fixed top-4 left-1/2 z-50 px-5 py-3 rounded-xl shadow-elevated border text-sm font-medium bg-white border-gray-200 text-gray-800"
+          >
+            {toast.message}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Reject Modal */}
+      {rejectModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm">
+          <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+            className="bg-white rounded-2xl border border-gray-100 shadow-elevated p-6 max-w-sm w-full mx-4">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-semibold text-gray-900">Reject Entry</h3>
+              <button onClick={() => { setRejectModal(null); setRejectReason(''); }}
+                className="w-8 h-8 rounded-lg bg-gray-50 hover:bg-gray-100 flex items-center justify-center text-gray-400">
+                <X size={16} />
+              </button>
+            </div>
+            <p className="text-gray-500 text-sm mb-4">Reject {rejectModal.customerName}'s waitlist entry?</p>
+            <textarea
+              value={rejectReason}
+              onChange={e => setRejectReason(e.target.value)}
+              rows={2}
+              placeholder="Reason (optional)..."
+              className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder:text-gray-400 resize-none mb-4"
+            />
+            <div className="flex gap-2">
+              <button onClick={() => { setRejectModal(null); setRejectReason(''); }}
+                className="flex-1 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-600 hover:bg-gray-50">Cancel</button>
+              <button onClick={() => rejectWaitlist(rejectModal._id)}
+                className="flex-1 py-2.5 bg-red-500 text-white rounded-xl text-sm font-semibold hover:bg-red-600">Reject</button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
       {loading ? (
-        <motion.div
-          key="loading"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.2 }}
-          className="flex items-center justify-center h-[60vh]"
-        >
+        <motion.div key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}
+          className="flex items-center justify-center h-[60vh]">
           <div className="text-center">
             <div className="w-10 h-10 border-[3px] border-primary-200 border-t-primary-600 rounded-full animate-spin mx-auto" />
             <p className="text-sm text-gray-400 mt-4">Loading dashboard...</p>
           </div>
         </motion.div>
       ) : (
-        <motion.div
-          key="content"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.3 }}
-        >
+        <motion.div key="content" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }}>
           {/* Header */}
           <div className="flex items-center justify-between mb-8">
             <div>
@@ -88,7 +168,7 @@ export default function DashboardPage() {
 
           {/* Stat Cards */}
           <StaggerContainer className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
-            {statCards.map(({ label, value, icon: Icon, gradient, bg, change }) => (
+            {statCards.map(({ label, value, icon: Icon, gradient, change }) => (
               <StaggerItem key={label}>
                 <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-card hover:shadow-elevated transition-all duration-300 group">
                   <div className="flex items-start justify-between mb-4">
@@ -101,9 +181,7 @@ export default function DashboardPage() {
                       </span>
                     )}
                   </div>
-                  <p className="text-3xl font-bold text-gray-900 tracking-tight">
-                    <AnimatedValue value={value} />
-                  </p>
+                  <p className="text-3xl font-bold text-gray-900 tracking-tight"><AnimatedValue value={value} /></p>
                   <p className="text-[13px] text-gray-400 mt-1">{label}</p>
                 </div>
               </StaggerItem>
@@ -117,8 +195,8 @@ export default function DashboardPage() {
                 ...bookings.filter(b => b.status === 'serving').map(b => ({ ...b, type: 'booking' })),
                 ...waitlist.filter(w => w.status === 'serving').map(w => ({ ...w, type: 'waitlist' })),
               ];
-              const waiting = waitlist.filter(w => w.status === 'waiting');
-              const upcoming = bookings.filter(b => ['pending', 'confirmed'].includes(b.status));
+              const waiting = waitlist.filter(w => ['waiting', 'approved'].includes(w.status));
+              const upcoming = bookings.filter(b => ['pending', 'confirmed', 'arrived'].includes(b.status));
               const completed = [
                 ...bookings.filter(b => b.status === 'completed').map(b => ({ ...b, type: 'booking' })),
                 ...waitlist.filter(w => w.status === 'completed').map(w => ({ ...w, type: 'waitlist' })),
@@ -133,7 +211,9 @@ export default function DashboardPage() {
                   </StaggerItem>
                   <StaggerItem>
                     <Section title="Waitlist" icon={Clock} count={waiting.length} items={waiting}
-                      color="amber" onAction={(item) => updateWaitlistStatus(item._id, 'serving')} actionLabel="Serve Now" />
+                      color="amber" onAction={(item) => updateWaitlistStatus(item._id, 'serving')} actionLabel="Serve Now"
+                      onApprove={(item) => approveWaitlist(item._id)}
+                      onReject={(item) => setRejectModal(item)} />
                   </StaggerItem>
                   <StaggerItem>
                     <Section title="Upcoming Bookings" icon={Users} count={upcoming.length} items={upcoming}
@@ -153,7 +233,7 @@ export default function DashboardPage() {
   );
 }
 
-function Section({ title, icon: Icon, count, items, color, onAction, actionLabel }) {
+function Section({ title, icon: Icon, count, items, color, onAction, actionLabel, onApprove, onReject }) {
   const colorMap = {
     emerald: 'from-emerald-500 to-teal-600',
     amber: 'from-amber-500 to-orange-600',
@@ -191,15 +271,31 @@ function Section({ title, icon: Icon, count, items, color, onAction, actionLabel
                 </div>
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-gray-900 truncate">{item.customerName}</p>
-                  <p className="text-[11px] text-gray-400">Party of {item.partySize} {item.time ? `\u00B7 ${item.time}` : ''}</p>
+                  <p className="text-[11px] text-gray-400">
+                    Party of {item.partySize} {item.time ? `\u00B7 ${item.time}` : ''}
+                    {item.bookingNumber ? ` \u00B7 #${item.bookingNumber}` : ''}
+                  </p>
                 </div>
               </div>
-              <div className="flex items-center gap-2.5 shrink-0">
+              <div className="flex items-center gap-2 shrink-0">
                 <span className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold ${cfg.bg} ${cfg.text} border ${cfg.border}`}>
                   <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />
                   {item.status}
                 </span>
-                {onAction && (
+                {/* Approve/Reject for waiting items */}
+                {onApprove && item.status === 'waiting' && (
+                  <div className="opacity-0 group-hover:opacity-100 flex items-center gap-1 transition-all duration-200">
+                    <button onClick={() => onApprove(item)} title="Approve"
+                      className="w-7 h-7 rounded-lg bg-emerald-50 border border-emerald-200/60 flex items-center justify-center text-emerald-600 hover:bg-emerald-100">
+                      <ThumbsUp size={12} />
+                    </button>
+                    <button onClick={() => onReject(item)} title="Reject"
+                      className="w-7 h-7 rounded-lg bg-red-50 border border-red-200/60 flex items-center justify-center text-red-500 hover:bg-red-100">
+                      <ThumbsDown size={12} />
+                    </button>
+                  </div>
+                )}
+                {onAction && !(['waiting'].includes(item.status) && onApprove) && (
                   <button onClick={() => onAction(item)}
                     className="opacity-0 group-hover:opacity-100 text-primary-600 hover:text-primary-700 text-[12px] font-semibold flex items-center gap-1 transition-all duration-200 bg-primary-50 px-2.5 py-1 rounded-lg">
                     {actionLabel} <ArrowRight size={11} />

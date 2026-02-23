@@ -9,17 +9,32 @@ import StatsPage from './pages/StatsPage';
 import SettingsPage from './pages/SettingsPage';
 import ProfilePage from './pages/ProfilePage';
 import QRLinksPage from './pages/QRLinksPage';
+import BookingScanPage from './pages/BookingScanPage';
 import CustomerLayout from './pages/customer/CustomerLayout';
 import WaitlistPage from './pages/customer/WaitlistPage';
 import WaitlistStatusPage from './pages/customer/WaitlistStatusPage';
 import BookingPage from './pages/customer/BookingPage';
+import MealBookingPage from './pages/customer/MealBookingPage';
+import BookingStatusPage from './pages/customer/BookingStatusPage';
+import LandingPage from './pages/LandingPage';
+import CustomerLoginPage from './pages/customer/CustomerLoginPage';
+import CustomerSignupPage from './pages/customer/CustomerSignupPage';
+import CustomerHomePage from './pages/customer/CustomerHomePage';
 
 function App() {
   return (
     <Routes>
+      {/* Landing */}
+      <Route path="/" element={<LandingPage />} />
+
       {/* Auth */}
       <Route path="/login" element={<LoginPage />} />
       <Route path="/signup" element={<SignupPage />} />
+
+      {/* Customer Auth */}
+      <Route path="/customer/login" element={<CustomerLoginPage />} />
+      <Route path="/customer/signup" element={<CustomerSignupPage />} />
+      <Route path="/customer/home" element={<CustomerHomePage />} />
 
       {/* Admin Portal */}
       <Route element={<AdminLayout />}>
@@ -30,16 +45,19 @@ function App() {
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/qr-links" element={<QRLinksPage />} />
+        <Route path="/scan" element={<BookingScanPage />} />
       </Route>
 
       {/* Customer Portal (Public) */}
       <Route element={<CustomerLayout />}>
         <Route path="/waitlist" element={<WaitlistPage />} />
         <Route path="/booking" element={<BookingPage />} />
+        <Route path="/booking/meal" element={<MealBookingPage />} />
+        <Route path="/booking/status" element={<BookingStatusPage />} />
+        <Route path="/waitlist/status" element={<WaitlistStatusPage />} />
       </Route>
-      <Route path="/waitlist/status/:id" element={<WaitlistStatusPage />} />
 
-      <Route path="*" element={<Navigate to="/dashboard" replace />} />
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 }

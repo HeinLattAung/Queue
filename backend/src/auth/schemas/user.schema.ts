@@ -20,7 +20,7 @@ export class User {
   @Prop()
   avatar: string;
 
-  @Prop({ enum: ['owner', 'staff'], default: 'owner' })
+  @Prop({ enum: ['owner', 'staff', 'customer'], default: 'owner' })
   role: string;
 
   @Prop({ type: Types.ObjectId, ref: 'Business' })

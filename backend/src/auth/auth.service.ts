@@ -4,7 +4,7 @@ import { Model } from 'mongoose';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { User, UserDocument } from './schemas/user.schema';
-import { SignUpDto, LoginDto } from './dto/auth.dto';
+import { SignUpDto, CustomerSignUpDto, LoginDto } from './dto/auth.dto';
 import { Business, BusinessDocument } from '../business/schemas/business.schema';
 
 @Injectable()
@@ -38,7 +38,28 @@ export class AuthService {
     const token = this.generateToken(user);
     return {
       token,
-      user: { id: user._id, name: user.name, email: user.email, role: user.role, businessId: business._id },
+      user: { id: user._id, name: user.name, email: user.email, phone: user.phone, role: user.role, businessId: business._id },
+    };
+  }
+
+  async customerSignUp(dto: CustomerSignUpDto) {
+    const exists = await this.userModel.findOne({ email: dto.email });
+    if (exists) throw new ConflictException('Email already registered');
+
+    const hashedPassword = await bcrypt.hash(dto.password, 10);
+
+    const user = await this.userModel.create({
+      name: dto.name,
+      email: dto.email,
+      password: hashedPassword,
+      phone: dto.phone || '',
+      role: 'customer',
+    });
+
+    const token = this.generateToken(user);
+    return {
+      token,
+      user: { id: user._id, name: user.name, email: user.email, phone: user.phone, role: user.role },
     };
   }
 
@@ -52,7 +73,7 @@ export class AuthService {
     const token = this.generateToken(user);
     return {
       token,
-      user: { id: user._id, name: user.name, email: user.email, role: user.role, businessId: user.businessId },
+      user: { id: user._id, name: user.name, email: user.email, phone: user.phone, role: user.role, businessId: user.businessId },
     };
   }
 

@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   LayoutDashboard, Calendar, Users, BarChart3, Settings,
-  QrCode, LogOut, User, ChevronUp, Sparkles
+  QrCode, LogOut, User, ChevronUp, Sparkles, ScanLine
 } from 'lucide-react';
 import useAuthStore from '../../store/authStore';
 
@@ -14,6 +14,7 @@ const navItems = [
   { to: '/stats', icon: BarChart3, label: 'Analytics' },
   { to: '/settings', icon: Settings, label: 'Settings' },
   { to: '/qr-links', icon: QrCode, label: 'QR Links' },
+  { to: '/scan', icon: ScanLine, label: 'Scan QR' },
 ];
 
 export default function Sidebar() {

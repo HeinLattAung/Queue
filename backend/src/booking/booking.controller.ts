@@ -8,6 +8,11 @@ import { CurrentUser } from '../common/decorators/current-user.decorator';
 export class BookingController {
   constructor(private bookingService: BookingService) {}
 
+  @Get('my')
+  findMyBookings(@CurrentUser('userId') userId: string, @CurrentUser('email') email: string) {
+    return this.bookingService.findByUserId(userId);
+  }
+
   @Get()
   findAll(@CurrentUser('businessId') businessId: string, @Query() query: any) {
     return this.bookingService.findAll(businessId, query);

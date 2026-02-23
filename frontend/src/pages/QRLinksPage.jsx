@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
-import { Copy, Check, X, QrCode, ClipboardList, CalendarCheck, ExternalLink } from 'lucide-react';
+import { Copy, Check, X, QrCode, ClipboardList, CalendarCheck, UtensilsCrossed, ExternalLink } from 'lucide-react';
 import { StaggerContainer, StaggerItem } from '../components/animation/StaggerContainer';
 import AnimatedModal from '../components/animation/AnimatedModal';
 import useAuthStore from '../store/authStore';
@@ -20,17 +20,23 @@ export default function QRLinksPage() {
       description: 'Customers scan to join the queue instantly. No app download required.',
       icon: ClipboardList,
       gradient: 'from-amber-500 to-orange-600',
-      bg: 'bg-amber-50',
       url: `${baseUrl}/waitlist?businessId=${businessId}`,
     },
     {
       type: 'booking',
-      label: 'Booking Registration',
+      label: 'Table Booking',
       description: 'Customers scan to make a table reservation in advance.',
       icon: CalendarCheck,
       gradient: 'from-blue-500 to-indigo-600',
-      bg: 'bg-blue-50',
       url: `${baseUrl}/booking?businessId=${businessId}`,
+    },
+    {
+      type: 'meal',
+      label: 'Meal Booking',
+      description: 'Customers scan to pre-order meals and book a dining experience.',
+      icon: UtensilsCrossed,
+      gradient: 'from-orange-500 to-red-600',
+      url: `${baseUrl}/booking/meal?businessId=${businessId}&type=meal`,
     },
   ];
 
@@ -47,7 +53,7 @@ export default function QRLinksPage() {
         <p className="text-gray-400 text-sm mt-1">Generate QR codes for customers to scan and self-register</p>
       </div>
 
-      <StaggerContainer className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl">
+      <StaggerContainer className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl">
         {links.map(link => (
           <StaggerItem key={link.type}>
             <div className="bg-white rounded-2xl border border-gray-100 shadow-card p-8 text-center hover:shadow-elevated transition-all duration-300 group">

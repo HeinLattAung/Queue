@@ -1,11 +1,17 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Waitlist, WaitlistDocument } from './schemas/waitlist.schema';
+import { EventsGateway } from '../events/events.gateway';
+import { QrTokenService } from '../qr-token/qr-token.service';
 
 @Injectable()
 export class WaitlistService {
-  constructor(@InjectModel(Waitlist.name) private waitlistModel: Model<WaitlistDocument>) {}
+  constructor(
+    @InjectModel(Waitlist.name) private waitlistModel: Model<WaitlistDocument>,
+    private eventsGateway: EventsGateway,
+    private qrTokenService: QrTokenService,
+  ) {}
 
   async findAll(businessId: string, query: any) {
     const { status, page = 1, limit = 20 } = query;
@@ -70,12 +76,24 @@ export class WaitlistService {
   }
 
   async create(businessId: string, data: any) {
-    return this.waitlistModel.create({ ...data, businessId });
+    const entry = await this.waitlistModel.create({ ...data, businessId });
+
+    const accessToken = this.qrTokenService.generateAccessToken(entry._id.toString(), 'waitlist');
+    entry.accessToken = accessToken;
+    await entry.save();
+
+    this.eventsGateway.emitToRoom(`business:${businessId}`, 'waitlist:updated', entry);
+
+    return entry;
   }
 
   async updateStatus(id: string, status: string) {
     const entry = await this.waitlistModel.findByIdAndUpdate(id, { status }, { new: true });
     if (!entry) throw new NotFoundException('Waitlist entry not found');
+
+    this.eventsGateway.emitToRoom(`waitlist:${id}`, 'waitlist:updated', entry);
+    this.eventsGateway.emitToRoom(`business:${entry.businessId}`, 'waitlist:updated', entry);
+
     return entry;
   }
 
@@ -85,5 +103,57 @@ export class WaitlistService {
 
   async remove(id: string) {
     return this.waitlistModel.findByIdAndDelete(id);
+  }
+
+  async approve(id: string) {
+    const entry = await this.waitlistModel.findByIdAndUpdate(
+      id,
+      { status: 'approved', approvedAt: new Date() },
+      { new: true },
+    );
+    if (!entry) throw new NotFoundException('Waitlist entry not found');
+
+    this.eventsGateway.emitToRoom(`waitlist:${id}`, 'waitlist:approved', entry);
+    this.eventsGateway.emitToRoom(`business:${entry.businessId}`, 'waitlist:updated', entry);
+
+    return entry;
+  }
+
+  async reject(id: string, reason: string) {
+    const entry = await this.waitlistModel.findByIdAndUpdate(
+      id,
+      { status: 'rejected', rejectedReason: reason },
+      { new: true },
+    );
+    if (!entry) throw new NotFoundException('Waitlist entry not found');
+
+    this.eventsGateway.emitToRoom(`waitlist:${id}`, 'waitlist:rejected', entry);
+    this.eventsGateway.emitToRoom(`business:${entry.businessId}`, 'waitlist:updated', entry);
+
+    return entry;
+  }
+
+  async findByAccessToken(token: string) {
+    const payload = this.qrTokenService.verifyToken(token);
+    if (payload.type !== 'waitlist') {
+      throw new UnauthorizedException('Invalid token type');
+    }
+    const entry = await this.waitlistModel.findById(payload.sub).populate('tableId');
+    if (!entry) throw new NotFoundException('Waitlist entry not found');
+    return entry;
+  }
+
+  async cancelByCustomer(id: string, token: string) {
+    const payload = this.qrTokenService.verifyToken(token);
+    if (payload.sub !== id) {
+      throw new UnauthorizedException('Token does not match waitlist entry');
+    }
+    const entry = await this.waitlistModel.findByIdAndUpdate(id, { status: 'cancelled' }, { new: true });
+    if (!entry) throw new NotFoundException('Waitlist entry not found');
+
+    this.eventsGateway.emitToRoom(`waitlist:${id}`, 'waitlist:updated', entry);
+    this.eventsGateway.emitToRoom(`business:${entry.businessId}`, 'waitlist:updated', entry);
+
+    return entry;
   }
 }

@@ -11,6 +11,9 @@ export class Booking {
   @Prop({ type: Types.ObjectId, ref: 'Customer' })
   customerId: Types.ObjectId;
 
+  @Prop({ type: Types.ObjectId, ref: 'User' })
+  userId: Types.ObjectId;
+
   @Prop({ required: true })
   customerName: string;
 
@@ -32,11 +35,29 @@ export class Booking {
   @Prop({ type: Types.ObjectId, ref: 'Table' })
   tableId: Types.ObjectId;
 
-  @Prop({ enum: ['pending', 'confirmed', 'serving', 'completed', 'cancelled'], default: 'pending' })
+  @Prop({ enum: ['pending', 'confirmed', 'arrived', 'serving', 'completed', 'cancelled'], default: 'pending' })
   status: string;
 
   @Prop()
   notes: string;
+
+  @Prop({ unique: true, sparse: true })
+  bookingNumber: string;
+
+  @Prop({ enum: ['table', 'meal'], default: 'table' })
+  bookingType: string;
+
+  @Prop()
+  accessToken: string;
+
+  @Prop()
+  qrTicket: string;
+
+  @Prop({ default: false })
+  qrTicketUsed: boolean;
+
+  @Prop({ type: [{ type: Types.ObjectId, ref: 'Meal' }] })
+  mealIds: Types.ObjectId[];
 }
 
 export const BookingSchema = SchemaFactory.createForClass(Booking);

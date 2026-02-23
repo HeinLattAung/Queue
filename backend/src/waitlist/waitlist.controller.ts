@@ -28,6 +28,16 @@ export class WaitlistController {
     return this.waitlistService.updateStatus(id, status);
   }
 
+  @Put(':id/approve')
+  approve(@Param('id') id: string) {
+    return this.waitlistService.approve(id);
+  }
+
+  @Put(':id/reject')
+  reject(@Param('id') id: string, @Body('reason') reason: string) {
+    return this.waitlistService.reject(id, reason);
+  }
+
   @Put(':id')
   update(@Param('id') id: string, @Body() data: any) {
     return this.waitlistService.update(id, data);

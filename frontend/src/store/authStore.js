@@ -35,6 +35,20 @@ const useAuthStore = create((set) => ({
     }
   },
 
+  customerSignup: async (formData) => {
+    set({ loading: true, error: null });
+    try {
+      const { data } = await api.post('/auth/customer/signup', formData);
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('user', JSON.stringify(data.user));
+      set({ user: data.user, token: data.token, loading: false });
+      return true;
+    } catch (err) {
+      set({ error: err.response?.data?.message || 'Signup failed', loading: false });
+      return false;
+    }
+  },
+
   logout: () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');

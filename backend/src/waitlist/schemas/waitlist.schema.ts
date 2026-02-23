@@ -23,7 +23,7 @@ export class Waitlist {
   @Prop({ required: true, default: 1 })
   partySize: number;
 
-  @Prop({ enum: ['waiting', 'serving', 'completed', 'cancelled'], default: 'waiting' })
+  @Prop({ enum: ['waiting', 'approved', 'rejected', 'serving', 'completed', 'cancelled'], default: 'waiting' })
   status: string;
 
   @Prop({ type: Types.ObjectId, ref: 'Table' })
@@ -34,6 +34,15 @@ export class Waitlist {
 
   @Prop()
   estimatedWait: number;
+
+  @Prop()
+  accessToken: string;
+
+  @Prop()
+  approvedAt: Date;
+
+  @Prop()
+  rejectedReason: string;
 }
 
 export const WaitlistSchema = SchemaFactory.createForClass(Waitlist);

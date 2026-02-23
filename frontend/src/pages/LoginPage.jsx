@@ -25,7 +25,14 @@ export default function LoginPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     const success = await login(email, password);
-    if (success) navigate('/dashboard');
+    if (success) {
+      const user = useAuthStore.getState().user;
+      if (user?.role === 'customer') {
+        navigate('/customer/home');
+      } else {
+        navigate('/dashboard');
+      }
+    }
   };
 
   const fieldVariants = {

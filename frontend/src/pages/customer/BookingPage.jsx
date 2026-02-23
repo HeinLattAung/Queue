@@ -2,16 +2,11 @@ import { useState, useEffect, useRef } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { gsap } from 'gsap';
-import { CalendarCheck, ArrowRight, CheckCircle, ChevronLeft, ChevronRight, Clock, Users, Minus, Plus } from 'lucide-react';
-import api from '../../services/api';
+import { CalendarCheck, ArrowRight, CheckCircle, ChevronLeft, ChevronRight, Clock, Users, Minus, Plus, MapPin, QrCode, Link as LinkIcon } from 'lucide-react';
+import useCustomerBookingStore from '../../store/customerBookingStore';
+import useSocket from '../../hooks/useSocket';
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-
-const TIME_SLOTS = [
-  '08:00', '09:00', '10:00', '11:00', '12:00', '13:00',
-  '14:00', '15:00', '16:00', '17:00', '18:00', '19:00',
-  '20:00', '21:00', '22:00',
-];
 
 const slideVariants = {
   enter: (direction) => ({ x: direction > 0 ? 80 : -80, opacity: 0 }),
@@ -20,17 +15,36 @@ const slideVariants = {
 };
 
 export default function BookingPage() {
-  const { business, businessId } = useOutletContext();
+  const { business, businessId, bookingType } = useOutletContext();
+  const store = useCustomerBookingStore();
   const [step, setStep] = useState(1);
   const [direction, setDirection] = useState(1);
-  const [form, setForm] = useState({
-    customerName: '', customerPhone: '', customerEmail: '', partySize: 2,
-    date: null, time: '', notes: '',
-  });
+  const [form, setForm] = useState({ customerName: '', customerPhone: '', customerEmail: '', notes: '' });
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [selectedDate, setSelectedDate] = useState(null);
+  const [selectedTime, setSelectedTime] = useState('');
+  const [partySize, setPartySize] = useState(2);
+  const [selectedTable, setSelectedTable] = useState(null);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
+  const [copied, setCopied] = useState(false);
   const successRef = useRef(null);
+
+  const { on, off } = useSocket(businessId ? `business:${businessId}` : null);
+
+  // Listen for availability changes
+  useEffect(() => {
+    const handler = () => {
+      if (selectedDate && selectedTime) {
+        store.fetchAvailableTables(businessId, selectedDate, selectedTime, partySize);
+      }
+      if (selectedDate) {
+        store.fetchAvailableSlots(businessId, selectedDate);
+      }
+    };
+    on('availability:changed', handler);
+    return () => off('availability:changed', handler);
+  }, [selectedDate, selectedTime, partySize, businessId]);
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
@@ -47,18 +61,33 @@ export default function BookingPage() {
   };
 
   const isSelected = (day) => {
-    if (!form.date) return false;
-    const sel = new Date(form.date);
+    if (!selectedDate) return false;
+    const sel = new Date(selectedDate);
     return day === sel.getDate() && month === sel.getMonth() && year === sel.getFullYear();
   };
 
   const selectDate = (day) => {
     if (isDisabled(day)) return;
-    setForm({ ...form, date: new Date(year, month, day).toISOString() });
+    const dateStr = new Date(year, month, day).toISOString();
+    setSelectedDate(dateStr);
+    setSelectedTime('');
+    setSelectedTable(null);
+    store.fetchAvailableSlots(businessId, dateStr);
+  };
+
+  const selectTime = (time) => {
+    setSelectedTime(time);
+    setSelectedTable(null);
+    store.fetchAvailableTables(businessId, selectedDate, time, partySize);
   };
 
   const adjustParty = (delta) => {
-    setForm(prev => ({ ...prev, partySize: Math.max(1, Math.min(20, prev.partySize + delta)) }));
+    const newSize = Math.max(1, Math.min(20, partySize + delta));
+    setPartySize(newSize);
+    setSelectedTable(null);
+    if (selectedDate && selectedTime) {
+      store.fetchAvailableTables(businessId, selectedDate, selectedTime, newSize);
+    }
   };
 
   const goToStep = (s) => {
@@ -69,20 +98,23 @@ export default function BookingPage() {
   const handleSubmit = async () => {
     setLoading(true);
     try {
-      const { data } = await api.post('/public/bookings', {
-        ...form,
-        businessId,
-        date: form.date,
-      });
-      setResult(data);
-      setDirection(1);
-      setStep(4);
+      store.setDate(selectedDate);
+      store.setTime(selectedTime);
+      store.setPartySize(partySize);
+      store.setSelectedTable(selectedTable);
+      store.setCustomerInfo(form);
+      const booking = await store.createBooking(businessId, bookingType);
+      if (booking) {
+        setResult(booking);
+        setDirection(1);
+        setStep(5);
+      }
     } catch (err) { console.error(err); }
     setLoading(false);
   };
 
   useEffect(() => {
-    if (step === 4 && successRef.current) {
+    if (step === 5 && successRef.current) {
       if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
       const els = successRef.current.querySelectorAll('[data-animate]');
       gsap.set(els, { opacity: 0, y: 20, scale: 0.95 });
@@ -92,7 +124,16 @@ export default function BookingPage() {
     }
   }, [step]);
 
-  if (step === 4) return (
+  const copyAccessLink = () => {
+    if (!result?.accessToken) return;
+    const url = `${window.location.origin}/booking/status?token=${result.accessToken}`;
+    navigator.clipboard.writeText(url);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  // Step 5: Confirmation result
+  if (step === 5) return (
     <div className="max-w-md mx-auto">
       <div ref={successRef} className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-8 text-center">
         <div data-animate className="w-20 h-20 rounded-full bg-emerald-500/20 flex items-center justify-center mx-auto mb-6">
@@ -100,6 +141,11 @@ export default function BookingPage() {
         </div>
         <h1 data-animate className="text-2xl font-bold text-white mb-2">Booking Confirmed!</h1>
         <p data-animate className="text-slate-400 text-sm mb-8">Your reservation has been submitted</p>
+
+        <div data-animate className="bg-indigo-500/10 border border-indigo-500/20 rounded-xl p-4 mb-6">
+          <p className="text-indigo-300 text-xs font-medium">Booking Number</p>
+          <p className="text-white font-mono text-lg mt-1 tracking-wider">{result?.bookingNumber}</p>
+        </div>
 
         <div data-animate className="bg-white/5 rounded-2xl p-5 mb-6 space-y-3 text-left">
           <div className="flex justify-between">
@@ -128,9 +174,20 @@ export default function BookingPage() {
           </div>
         </div>
 
-        <div data-animate className="bg-indigo-500/10 border border-indigo-500/20 rounded-xl p-4">
-          <p className="text-indigo-300 text-xs font-medium">Booking ID</p>
-          <p className="text-white font-mono text-sm mt-1 tracking-wider">{result?._id}</p>
+        <div data-animate className="flex gap-3">
+          <button onClick={copyAccessLink}
+            className={`flex-1 flex items-center justify-center gap-2 py-3.5 rounded-xl text-sm font-semibold transition-all ${
+              copied ? 'bg-emerald-500 text-white' : 'gradient-primary text-white shadow-glow hover:opacity-90'
+            }`}>
+            {copied ? <><CheckCircle size={16} /> Copied!</> : <><LinkIcon size={16} /> Copy Status Link</>}
+          </button>
+        </div>
+
+        <div data-animate className="mt-4">
+          <a href={`/booking/status?token=${result?.accessToken}`}
+            className="text-indigo-400 text-xs hover:text-indigo-300 transition-colors">
+            View Booking Status &rarr;
+          </a>
         </div>
       </div>
     </div>
@@ -148,19 +205,17 @@ export default function BookingPage() {
 
       {/* Progress */}
       <div className="flex items-center justify-center gap-2 mb-8">
-        {[1, 2, 3].map(s => (
+        {[1, 2, 3, 4].map(s => (
           <div key={s} className="flex items-center gap-2">
             <motion.div
-              animate={{
-                scale: step === s ? 1.1 : 1,
-              }}
+              animate={{ scale: step === s ? 1.1 : 1 }}
               transition={{ type: 'spring', stiffness: 300, damping: 20 }}
               className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold transition-colors duration-300
                 ${step >= s ? 'gradient-primary text-white shadow-glow' : 'bg-white/5 text-slate-600'}`}
             >
               {s}
             </motion.div>
-            {s < 3 && <div className={`w-8 h-0.5 rounded-full transition-colors duration-300 ${step > s ? 'bg-indigo-500' : 'bg-white/5'}`} />}
+            {s < 4 && <div className={`w-6 h-0.5 rounded-full transition-colors duration-300 ${step > s ? 'bg-indigo-500' : 'bg-white/5'}`} />}
           </div>
         ))}
       </div>
@@ -169,15 +224,8 @@ export default function BookingPage() {
         <AnimatePresence mode="wait" custom={direction}>
           {/* Step 1: Date & Time */}
           {step === 1 && (
-            <motion.div
-              key="step1"
-              custom={direction}
-              variants={slideVariants}
-              initial="enter"
-              animate="center"
-              exit="exit"
-              transition={{ duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
-            >
+            <motion.div key="step1" custom={direction} variants={slideVariants} initial="enter" animate="center" exit="exit"
+              transition={{ duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}>
               <h2 className="text-white font-semibold text-lg mb-5 flex items-center gap-2">
                 <CalendarCheck size={18} className="text-indigo-400" /> Select Date & Time
               </h2>
@@ -218,25 +266,27 @@ export default function BookingPage() {
 
               {/* Time Slots */}
               <AnimatePresence>
-                {form.date && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    exit={{ opacity: 0, height: 0 }}
-                    transition={{ duration: 0.3 }}
-                  >
+                {selectedDate && (
+                  <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.3 }}>
                     <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-3">
                       <Clock size={12} className="inline mr-1" /> Select Time
                     </label>
                     <div className="grid grid-cols-3 gap-2">
-                      {TIME_SLOTS.map(time => (
-                        <button key={time} onClick={() => setForm({ ...form, time })}
-                          className={`py-2.5 rounded-xl text-[13px] font-medium transition-all
-                            ${form.time === time
-                              ? 'gradient-primary text-white shadow-glow'
-                              : 'bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white border border-white/5'
+                      {store.availableSlots.map(slot => (
+                        <button key={slot.time} onClick={() => selectTime(slot.time)} disabled={slot.available === 0}
+                          className={`py-2.5 rounded-xl text-[13px] font-medium transition-all relative
+                            ${slot.available === 0
+                              ? 'bg-white/5 text-slate-700 cursor-not-allowed'
+                              : selectedTime === slot.time
+                                ? 'gradient-primary text-white shadow-glow'
+                                : 'bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white border border-white/5'
                             }`}>
-                          {time}
+                          {slot.time}
+                          {slot.available > 0 && (
+                            <span className={`block text-[9px] mt-0.5 ${selectedTime === slot.time ? 'text-white/70' : 'text-slate-600'}`}>
+                              {slot.available} left
+                            </span>
+                          )}
                         </button>
                       ))}
                     </div>
@@ -244,7 +294,7 @@ export default function BookingPage() {
                 )}
               </AnimatePresence>
 
-              <motion.button onClick={() => goToStep(2)} disabled={!form.date || !form.time}
+              <motion.button onClick={() => goToStep(2)} disabled={!selectedDate || !selectedTime}
                 whileTap={{ scale: 0.98 }}
                 className="w-full mt-6 gradient-primary text-white py-3.5 rounded-xl font-semibold text-sm hover:opacity-90 disabled:opacity-30 transition-all shadow-glow flex items-center justify-center gap-2">
                 Continue <ArrowRight size={16} />
@@ -252,40 +302,27 @@ export default function BookingPage() {
             </motion.div>
           )}
 
-          {/* Step 2: Party Size */}
+          {/* Step 2: Party Size & Table */}
           {step === 2 && (
-            <motion.div
-              key="step2"
-              custom={direction}
-              variants={slideVariants}
-              initial="enter"
-              animate="center"
-              exit="exit"
-              transition={{ duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
-            >
+            <motion.div key="step2" custom={direction} variants={slideVariants} initial="enter" animate="center" exit="exit"
+              transition={{ duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}>
               <h2 className="text-white font-semibold text-lg mb-8 flex items-center gap-2">
-                <Users size={18} className="text-indigo-400" /> How many guests?
+                <Users size={18} className="text-indigo-400" /> Party Size & Table
               </h2>
 
-              <div className="flex items-center justify-center gap-8 py-8">
+              <div className="flex items-center justify-center gap-8 py-4">
                 <motion.button onClick={() => adjustParty(-1)} whileTap={{ scale: 0.92 }}
                   className="w-14 h-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-white hover:bg-white/10 transition-colors">
                   <Minus size={22} />
                 </motion.button>
                 <div className="text-center w-24">
                   <AnimatePresence mode="wait">
-                    <motion.span
-                      key={form.partySize}
-                      initial={{ opacity: 0, y: -10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: 10 }}
-                      transition={{ duration: 0.15 }}
-                      className="text-6xl font-bold text-white block"
-                    >
-                      {form.partySize}
+                    <motion.span key={partySize} initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }}
+                      transition={{ duration: 0.15 }} className="text-6xl font-bold text-white block">
+                      {partySize}
                     </motion.span>
                   </AnimatePresence>
-                  <p className="text-slate-500 text-sm mt-2">{form.partySize === 1 ? 'guest' : 'guests'}</p>
+                  <p className="text-slate-500 text-sm mt-2">{partySize === 1 ? 'guest' : 'guests'}</p>
                 </div>
                 <motion.button onClick={() => adjustParty(1)} whileTap={{ scale: 0.92 }}
                   className="w-14 h-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-white hover:bg-white/10 transition-colors">
@@ -293,7 +330,35 @@ export default function BookingPage() {
                 </motion.button>
               </div>
 
-              <div className="flex gap-3 mt-4">
+              {/* Available Tables */}
+              {store.availableTables.length > 0 && (
+                <div className="mt-6">
+                  <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-3">
+                    <MapPin size={12} className="inline mr-1" /> Select a Table
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {store.availableTables.map(table => (
+                      <button key={table._id} onClick={() => setSelectedTable(table)}
+                        className={`p-3 rounded-xl text-left transition-all ${
+                          selectedTable?._id === table._id
+                            ? 'gradient-primary text-white shadow-glow'
+                            : 'bg-white/5 border border-white/5 text-slate-300 hover:bg-white/10'
+                        }`}>
+                        <p className="font-semibold text-sm">{table.name}</p>
+                        <p className={`text-xs mt-0.5 ${selectedTable?._id === table._id ? 'text-white/70' : 'text-slate-500'}`}>
+                          Seats {table.capacity}
+                        </p>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {store.availableTables.length === 0 && selectedTime && (
+                <p className="text-center text-slate-500 text-sm mt-6">No tables available for this selection</p>
+              )}
+
+              <div className="flex gap-3 mt-6">
                 <button onClick={() => goToStep(1)}
                   className="flex-1 py-3.5 bg-white/5 border border-white/10 rounded-xl text-sm font-medium text-slate-400 hover:bg-white/10 transition-colors">
                   Back
@@ -306,21 +371,12 @@ export default function BookingPage() {
             </motion.div>
           )}
 
-          {/* Step 3: Details */}
+          {/* Step 3: Customer Details */}
           {step === 3 && (
-            <motion.div
-              key="step3"
-              custom={direction}
-              variants={slideVariants}
-              initial="enter"
-              animate="center"
-              exit="exit"
-              transition={{ duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
-              className="space-y-4"
-            >
+            <motion.div key="step3" custom={direction} variants={slideVariants} initial="enter" animate="center" exit="exit"
+              transition={{ duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }} className="space-y-4">
               <h2 className="text-white font-semibold text-lg mb-2">Your Details</h2>
 
-              {/* Summary */}
               <div className="bg-white/5 rounded-xl p-4 flex items-center justify-between mb-2">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-indigo-500/20 flex items-center justify-center">
@@ -328,9 +384,9 @@ export default function BookingPage() {
                   </div>
                   <div>
                     <p className="text-white text-sm font-semibold">
-                      {new Date(form.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                      {new Date(selectedDate).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
                     </p>
-                    <p className="text-slate-500 text-xs">{form.time} &middot; {form.partySize} guests</p>
+                    <p className="text-slate-500 text-xs">{selectedTime} &middot; {partySize} guests{selectedTable ? ` \u00B7 ${selectedTable.name}` : ''}</p>
                   </div>
                 </div>
                 <button onClick={() => goToStep(1)} className="text-indigo-400 text-xs font-medium hover:text-indigo-300">Edit</button>
@@ -373,7 +429,71 @@ export default function BookingPage() {
                   className="flex-1 py-3.5 bg-white/5 border border-white/10 rounded-xl text-sm font-medium text-slate-400 hover:bg-white/10 transition-colors">
                   Back
                 </button>
-                <motion.button onClick={handleSubmit} disabled={loading || !form.customerName || !form.customerPhone}
+                <motion.button onClick={() => goToStep(4)} disabled={!form.customerName || !form.customerPhone}
+                  whileTap={{ scale: 0.98 }}
+                  className="flex-1 gradient-primary text-white py-3.5 rounded-xl font-semibold text-sm hover:opacity-90 disabled:opacity-30 transition-all shadow-glow flex items-center justify-center gap-2">
+                  Review <ArrowRight size={16} />
+                </motion.button>
+              </div>
+            </motion.div>
+          )}
+
+          {/* Step 4: Review & Confirm */}
+          {step === 4 && (
+            <motion.div key="step4" custom={direction} variants={slideVariants} initial="enter" animate="center" exit="exit"
+              transition={{ duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}>
+              <h2 className="text-white font-semibold text-lg mb-5">Confirm Your Booking</h2>
+
+              <div className="bg-white/5 rounded-2xl p-5 space-y-3 mb-6">
+                <div className="flex justify-between">
+                  <span className="text-slate-400 text-sm">Date</span>
+                  <span className="text-white font-semibold text-sm">
+                    {new Date(selectedDate).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400 text-sm">Time</span>
+                  <span className="text-white font-semibold text-sm">{selectedTime}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400 text-sm">Party Size</span>
+                  <span className="text-white font-semibold text-sm">{partySize} guests</span>
+                </div>
+                {selectedTable && (
+                  <div className="flex justify-between">
+                    <span className="text-slate-400 text-sm">Table</span>
+                    <span className="text-white font-semibold text-sm">{selectedTable.name}</span>
+                  </div>
+                )}
+                <div className="h-px bg-white/5" />
+                <div className="flex justify-between">
+                  <span className="text-slate-400 text-sm">Name</span>
+                  <span className="text-white font-semibold text-sm">{form.customerName}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400 text-sm">Phone</span>
+                  <span className="text-white font-semibold text-sm">{form.customerPhone}</span>
+                </div>
+                {form.customerEmail && (
+                  <div className="flex justify-between">
+                    <span className="text-slate-400 text-sm">Email</span>
+                    <span className="text-white font-semibold text-sm">{form.customerEmail}</span>
+                  </div>
+                )}
+                {form.notes && (
+                  <div className="flex justify-between">
+                    <span className="text-slate-400 text-sm">Notes</span>
+                    <span className="text-white font-semibold text-sm max-w-[200px] text-right">{form.notes}</span>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex gap-3">
+                <button onClick={() => goToStep(3)}
+                  className="flex-1 py-3.5 bg-white/5 border border-white/10 rounded-xl text-sm font-medium text-slate-400 hover:bg-white/10 transition-colors">
+                  Back
+                </button>
+                <motion.button onClick={handleSubmit} disabled={loading}
                   whileTap={{ scale: 0.98 }}
                   className="flex-1 gradient-primary text-white py-3.5 rounded-xl font-semibold text-sm hover:opacity-90 disabled:opacity-30 transition-all shadow-glow flex items-center justify-center gap-2">
                   {loading ? (

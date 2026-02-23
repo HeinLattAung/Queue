@@ -1,29 +1,24 @@
 import { useState, useEffect, useRef } from 'react';
-import { useOutletContext, useNavigate } from 'react-router-dom';
+import { useOutletContext } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { gsap } from 'gsap';
-import { Clock, Users, ArrowRight, CheckCircle, Minus, Plus } from 'lucide-react';
-import api from '../../services/api';
+import { Clock, ArrowRight, CheckCircle, Minus, Plus, Link as LinkIcon } from 'lucide-react';
+import useCustomerWaitlistStore from '../../store/customerWaitlistStore';
 
 export default function WaitlistPage() {
   const { business, businessId } = useOutletContext();
-  const navigate = useNavigate();
+  const store = useCustomerWaitlistStore();
   const [step, setStep] = useState('form');
   const [form, setForm] = useState({ customerName: '', customerPhone: '', customerEmail: '', partySize: 2, notes: '' });
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState(null);
+  const [copied, setCopied] = useState(false);
   const successRef = useRef(null);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    try {
-      const { data } = await api.post('/public/waitlist', { ...form, businessId });
-      setResult(data);
-      setStep('success');
-    } catch (err) {
-      console.error(err);
-    }
+    const result = await store.joinWaitlist(businessId, form);
+    if (result) setStep('success');
     setLoading(false);
   };
 
@@ -42,17 +37,18 @@ export default function WaitlistPage() {
     setForm(prev => ({ ...prev, partySize: Math.max(1, Math.min(20, prev.partySize + delta)) }));
   };
 
+  const copyAccessLink = () => {
+    if (!store.entry?.accessToken) return;
+    navigator.clipboard.writeText(`${window.location.origin}/waitlist/status?token=${store.entry.accessToken}`);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   return (
     <div className="max-w-md mx-auto">
       <AnimatePresence mode="wait">
         {step === 'success' ? (
-          <motion.div
-            key="success"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.3 }}
-          >
+          <motion.div key="success" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }}>
             <div ref={successRef} className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-8 text-center">
               <div data-animate className="w-20 h-20 rounded-full bg-emerald-500/20 flex items-center justify-center mx-auto mb-6">
                 <CheckCircle size={40} className="text-emerald-400" />
@@ -63,11 +59,11 @@ export default function WaitlistPage() {
               <div data-animate className="bg-white/5 rounded-2xl p-5 mb-6 space-y-3">
                 <div className="flex justify-between">
                   <span className="text-slate-400 text-sm">Name</span>
-                  <span className="text-white font-semibold text-sm">{result?.customerName}</span>
+                  <span className="text-white font-semibold text-sm">{store.entry?.customerName}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-slate-400 text-sm">Party Size</span>
-                  <span className="text-white font-semibold text-sm">{result?.partySize} guests</span>
+                  <span className="text-white font-semibold text-sm">{store.entry?.partySize} guests</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-slate-400 text-sm">Status</span>
@@ -77,24 +73,25 @@ export default function WaitlistPage() {
                 </div>
               </div>
 
-              <motion.button
-                data-animate
-                whileTap={{ scale: 0.98 }}
-                onClick={() => navigate(`/waitlist/status/${result?._id}`)}
-                className="w-full gradient-primary text-white py-3.5 rounded-xl font-semibold text-sm hover:opacity-90 transition-all shadow-glow flex items-center justify-center gap-2"
-              >
-                Track My Position <ArrowRight size={16} />
-              </motion.button>
+              <div data-animate className="flex gap-3">
+                <button onClick={copyAccessLink}
+                  className={`flex-1 flex items-center justify-center gap-2 py-3.5 rounded-xl text-sm font-semibold transition-all ${
+                    copied ? 'bg-emerald-500 text-white' : 'gradient-primary text-white shadow-glow hover:opacity-90'
+                  }`}>
+                  {copied ? <><CheckCircle size={16} /> Copied!</> : <><LinkIcon size={16} /> Copy Status Link</>}
+                </button>
+              </div>
+
+              <div data-animate className="mt-4">
+                <a href={`/waitlist/status?token=${store.entry?.accessToken}`}
+                  className="text-indigo-400 text-xs hover:text-indigo-300 transition-colors">
+                  Track My Position &rarr;
+                </a>
+              </div>
             </div>
           </motion.div>
         ) : (
-          <motion.div
-            key="form"
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.35 }}
-          >
+          <motion.div key="form" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.35 }}>
             <div className="text-center mb-8">
               <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center mx-auto mb-5 shadow-lg shadow-amber-500/20">
                 <Clock size={30} className="text-white" />
@@ -104,7 +101,6 @@ export default function WaitlistPage() {
             </div>
 
             <form onSubmit={handleSubmit} className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-6 space-y-5">
-              {/* Party Size */}
               <div>
                 <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-3">Party Size</label>
                 <div className="flex items-center justify-center gap-6">
@@ -114,14 +110,8 @@ export default function WaitlistPage() {
                   </motion.button>
                   <div className="text-center w-20">
                     <AnimatePresence mode="wait">
-                      <motion.span
-                        key={form.partySize}
-                        initial={{ opacity: 0, y: -8 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: 8 }}
-                        transition={{ duration: 0.12 }}
-                        className="text-4xl font-bold text-white block"
-                      >
+                      <motion.span key={form.partySize} initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 8 }}
+                        transition={{ duration: 0.12 }} className="text-4xl font-bold text-white block">
                         {form.partySize}
                       </motion.span>
                     </AnimatePresence>

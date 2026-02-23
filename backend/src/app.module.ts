@@ -10,6 +10,9 @@ import { TableModule } from './table/table.module';
 import { MealModule } from './meal/meal.module';
 import { ProfileModule } from './profile/profile.module';
 import { StatsModule } from './stats/stats.module';
+import { EventsModule } from './events/events.module';
+import { QrTokenModule } from './qr-token/qr-token.module';
+import { AvailabilityModule } from './availability/availability.module';
 import { MongoMemoryServer } from 'mongodb-memory-server';
 
 let mongoUri: string;
@@ -38,6 +41,9 @@ let mongoUri: string;
     MealModule,
     ProfileModule,
     StatsModule,
+    EventsModule,
+    QrTokenModule,
+    AvailabilityModule,
   ],
 })
 export class AppModule {}

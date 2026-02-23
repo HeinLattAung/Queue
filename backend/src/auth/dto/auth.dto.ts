@@ -20,6 +20,20 @@ export class SignUpDto {
   location?: string;
 }
 
+export class CustomerSignUpDto {
+  @IsNotEmpty()
+  name: string;
+
+  @IsEmail()
+  email: string;
+
+  @MinLength(6)
+  password: string;
+
+  @IsOptional()
+  phone?: string;
+}
+
 export class LoginDto {
   @IsEmail()
   email: string;

@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Body, Param } from '@nestjs/common';
+import { Controller, Post, Get, Put, Body, Param } from '@nestjs/common';
 import { WaitlistService } from './waitlist.service';
 
 @Controller('public/waitlist')
@@ -12,12 +12,21 @@ export class PublicWaitlistController {
 
   @Get(':id/status')
   async getStatus(@Param('id') id: string) {
-    const entry = await this.waitlistService.findOne(id);
-    return entry;
+    return this.waitlistService.findOne(id);
   }
 
   @Get('position/:id')
   async getPosition(@Param('id') id: string) {
     return this.waitlistService.getPosition(id);
+  }
+
+  @Get('access/:token')
+  async findByAccessToken(@Param('token') token: string) {
+    return this.waitlistService.findByAccessToken(token);
+  }
+
+  @Put(':id/cancel')
+  async cancelByCustomer(@Param('id') id: string, @Body('token') token: string) {
+    return this.waitlistService.cancelByCustomer(id, token);
   }
 }

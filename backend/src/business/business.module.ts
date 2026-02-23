@@ -6,6 +6,7 @@ import { BusinessService } from './business.service';
 import { Business, BusinessSchema } from './schemas/business.schema';
 import { OpeningHours, OpeningHoursSchema } from './schemas/opening-hours.schema';
 import { AuthModule } from '../auth/auth.module';
+import { MealModule } from '../meal/meal.module';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { AuthModule } from '../auth/auth.module';
       { name: OpeningHours.name, schema: OpeningHoursSchema },
     ]),
     AuthModule,
+    MealModule,
   ],
   controllers: [BusinessController, PublicBusinessController],
   providers: [BusinessService],
