@@ -9,6 +9,9 @@ const useAuthStore = create((set) => ({
 
   login: async (email, password) => {
     set({ loading: true, error: null });
+    // Clear any stale session before attempting login
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
     try {
       const { data } = await api.post('/auth/login', { email, password });
       localStorage.setItem('token', data.token);
@@ -52,6 +55,7 @@ const useAuthStore = create((set) => ({
   logout: () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+    delete api.defaults.headers.common['Authorization'];
     set({ user: null, token: null });
   },
 

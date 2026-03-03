@@ -1,26 +1,54 @@
 import { useState } from 'react';
-import { QRCodeSVG } from 'qrcode.react';
-import { Copy, Check, X, QrCode, ClipboardList, CalendarCheck, UtensilsCrossed, ExternalLink } from 'lucide-react';
+import QRX from '@qr-x/react';
+import { Copy, Check, X, QrCode, ClipboardList, CalendarCheck, UtensilsCrossed, ExternalLink, RefreshCw, Loader2 } from 'lucide-react';
 import { StaggerContainer, StaggerItem } from '../components/animation/StaggerContainer';
 import AnimatedModal from '../components/animation/AnimatedModal';
 import useAuthStore from '../store/authStore';
+import api from '../services/api';
 
 export default function QRLinksPage() {
   const { user } = useAuthStore();
   const [modal, setModal] = useState(null);
   const [copied, setCopied] = useState(false);
+  const [qrToken, setQrToken] = useState(null);
+  const [qrLoading, setQrLoading] = useState(false);
+  const [qrError, setQrError] = useState(null);
 
   const businessId = user?.businessId;
   const baseUrl = window.location.origin;
 
+  const generateSignedQr = async () => {
+    setQrLoading(true);
+    setQrError(null);
+    try {
+      const { data } = await api.post('/qr-token/generate');
+      setQrToken(data);
+      return data;
+    } catch (err) {
+      setQrError('Failed to generate QR token');
+      return null;
+    } finally {
+      setQrLoading(false);
+    }
+  };
+
+  const openWaitlistModal = async (link) => {
+    setModal(link);
+    const result = await generateSignedQr();
+    if (result) {
+      link._signedUrl = result.bookingUrl;
+    }
+  };
+
   const links = [
     {
       type: 'waitlist',
-      label: 'Waitlist Registration',
-      description: 'Customers scan to join the queue instantly. No app download required.',
+      label: 'Queue Entry',
+      description: 'Customers scan to join the queue. Signed token with geofence protection.',
       icon: ClipboardList,
       gradient: 'from-amber-500 to-orange-600',
       url: `${baseUrl}/waitlist?businessId=${businessId}`,
+      signed: true,
     },
     {
       type: 'booking',
@@ -46,6 +74,11 @@ export default function QRLinksPage() {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const getModalUrl = () => {
+    if (modal?.signed && qrToken) return qrToken.bookingUrl;
+    return modal?.url;
+  };
+
   return (
     <div>
       <div className="mb-8">
@@ -62,9 +95,9 @@ export default function QRLinksPage() {
               </div>
               <h2 className="font-bold text-gray-900 text-lg">{link.label}</h2>
               <p className="text-[13px] text-gray-400 mt-2 mb-8 leading-relaxed max-w-[240px] mx-auto">{link.description}</p>
-              <button onClick={() => setModal(link)}
+              <button onClick={() => link.signed ? openWaitlistModal(link) : setModal(link)}
                 className="gradient-primary text-white px-8 py-3 rounded-xl text-[13px] font-semibold hover:opacity-90 transition-all shadow-glow flex items-center gap-2 mx-auto">
-                <QrCode size={16} /> View QR Code
+                <QrCode size={16} /> {link.signed ? 'Generate QR Code' : 'View QR Code'}
               </button>
             </div>
           </StaggerItem>
@@ -72,10 +105,10 @@ export default function QRLinksPage() {
       </StaggerContainer>
 
       {/* Modal */}
-      <AnimatedModal isOpen={!!modal} onClose={() => setModal(null)}>
+      <AnimatedModal isOpen={!!modal} onClose={() => { setModal(null); setQrToken(null); setQrError(null); }}>
         {modal && (
           <div className="bg-white rounded-3xl w-full max-w-md p-8 shadow-elevated">
-            <button onClick={() => setModal(null)} className="absolute top-4 right-4 w-8 h-8 rounded-xl bg-gray-50 hover:bg-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-600 transition-colors">
+            <button onClick={() => { setModal(null); setQrToken(null); setQrError(null); }} className="absolute top-4 right-4 w-8 h-8 rounded-xl bg-gray-50 hover:bg-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-600 transition-colors">
               <X size={16} />
             </button>
 
@@ -89,23 +122,59 @@ export default function QRLinksPage() {
 
             <div className="flex justify-center mb-6">
               <div className="p-5 bg-white rounded-2xl border-2 border-gray-100 shadow-soft">
-                <QRCodeSVG
-                  value={modal.url}
-                  size={200}
-                  level="H"
-                  bgColor="transparent"
-                  fgColor="#1e293b"
-                />
+                {modal.signed && qrLoading ? (
+                  <div className="w-[200px] h-[200px] flex items-center justify-center">
+                    <Loader2 size={32} className="text-indigo-500 animate-spin" />
+                  </div>
+                ) : modal.signed && qrError ? (
+                  <div className="w-[200px] h-[200px] flex flex-col items-center justify-center gap-3">
+                    <p className="text-red-500 text-xs text-center">{qrError}</p>
+                    <button onClick={generateSignedQr} className="text-indigo-500 text-xs font-medium flex items-center gap-1 hover:text-indigo-600">
+                      <RefreshCw size={12} /> Retry
+                    </button>
+                  </div>
+                ) : (
+                  <QRX
+                    data={getModalUrl() || modal.url}
+                    level="H"
+                    shapes={{ body: 'circle', eyeball: 'rounded', eyeframe: 'rounded' }}
+                    gradient={{ type: 'linear', rotate: 45, colors: ['#6366f1', '#8b5cf6'] }}
+                    width={200}
+                    height={200}
+                  />
+                )}
               </div>
             </div>
 
+            {/* Signed token info badge */}
+            {modal.signed && qrToken && (
+              <div className="flex items-center justify-center gap-2 mb-4">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 text-emerald-600 rounded-full text-[11px] font-semibold">
+                  <Check size={12} /> Signed Token
+                </span>
+                <span className="text-[11px] text-gray-400">Expires in {qrToken.expiresIn}</span>
+              </div>
+            )}
+
+            {/* Regenerate button for signed QR */}
+            {modal.signed && qrToken && (
+              <button onClick={generateSignedQr} disabled={qrLoading}
+                className="w-full mb-4 py-2.5 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-xl text-[12px] font-medium text-gray-600 flex items-center justify-center gap-2 transition-colors disabled:opacity-50">
+                <RefreshCw size={14} className={qrLoading ? 'animate-spin' : ''} /> Regenerate Token
+              </button>
+            )}
+
             <div className="bg-gray-50/80 rounded-xl p-4 mb-5">
-              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Public URL</p>
-              <p className="text-[12px] text-gray-600 break-all font-mono leading-relaxed">{modal.url}</p>
+              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">
+                {modal.signed ? 'Signed URL' : 'Public URL'}
+              </p>
+              <p className="text-[12px] text-gray-600 break-all font-mono leading-relaxed">
+                {getModalUrl() || modal.url}
+              </p>
             </div>
 
             <div className="flex gap-2">
-              <button onClick={() => copyLink(modal.url)}
+              <button onClick={() => copyLink(getModalUrl() || modal.url)}
                 className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-[13px] font-semibold transition-all duration-200 ${
                   copied
                     ? 'bg-emerald-500 text-white shadow-sm'
@@ -113,7 +182,7 @@ export default function QRLinksPage() {
                 }`}>
                 {copied ? <><Check size={16} /> Copied!</> : <><Copy size={16} /> Copy Link</>}
               </button>
-              <button onClick={() => window.open(modal.url, '_blank')}
+              <button onClick={() => window.open(getModalUrl() || modal.url, '_blank')}
                 className="w-12 h-12 rounded-xl border border-gray-200 flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-50 transition-colors">
                 <ExternalLink size={16} />
               </button>

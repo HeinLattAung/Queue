@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Put, Body, Param } from '@nestjs/common';
+import { Controller, Post, Get, Put, Body, Param, Query } from '@nestjs/common';
 import { WaitlistService } from './waitlist.service';
 
 @Controller('public/waitlist')
@@ -8,6 +8,15 @@ export class PublicWaitlistController {
   @Post()
   create(@Body() data: any) {
     return this.waitlistService.create(data.businessId, data);
+  }
+
+  /**
+   * POST /api/public/waitlist/join
+   * Join queue via QR scan with geofence validation.
+   */
+  @Post('join')
+  joinFromQr(@Body() data: any) {
+    return this.waitlistService.createFromQr(data);
   }
 
   @Get(':id/status')
@@ -26,7 +35,12 @@ export class PublicWaitlistController {
   }
 
   @Put(':id/cancel')
-  async cancelByCustomer(@Param('id') id: string, @Body('token') token: string) {
+  async cancelByCustomer(
+    @Param('id') id: string,
+    @Body('token') bodyToken: string,
+    @Query('token') queryToken: string,
+  ) {
+    const token = bodyToken || queryToken;
     return this.waitlistService.cancelByCustomer(id, token);
   }
 }

@@ -1,11 +1,15 @@
 import { useState, useEffect, useCallback } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { Clock, Users, UtensilsCrossed, CheckCircle2, ArrowRight, TrendingUp, RefreshCw, ThumbsUp, ThumbsDown, X } from 'lucide-react';
+import {
+  Clock, Users, UtensilsCrossed, CheckCircle2, ArrowRight, TrendingUp, RefreshCw,
+  ThumbsUp, ThumbsDown, X, PhoneForwarded, SkipForward, Bell, Volume2,
+} from 'lucide-react';
 import { StaggerContainer, StaggerItem } from '../components/animation/StaggerContainer';
 import useCountUp from '../hooks/useCountUp';
 import useSocket from '../hooks/useSocket';
 import useAuthStore from '../store/authStore';
 import api from '../services/api';
+import { onReconnect } from '../services/socket';
 
 const statusConfig = {
   serving: { bg: 'bg-emerald-50', border: 'border-emerald-200/60', text: 'text-emerald-600', dot: 'bg-emerald-500' },
@@ -33,6 +37,7 @@ export default function DashboardPage() {
   const [toast, setToast] = useState(null);
   const [rejectModal, setRejectModal] = useState(null);
   const [rejectReason, setRejectReason] = useState('');
+  const [callingNext, setCallingNext] = useState(false);
 
   const businessId = user?.businessId;
   const { on, off } = useSocket(businessId ? `business:${businessId}` : null);
@@ -53,24 +58,75 @@ export default function DashboardPage() {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  // Real-time updates
+  // Re-sync state on socket reconnect (catches events missed during disconnect)
   useEffect(() => {
+    return onReconnect(fetchData);
+  }, [fetchData]);
+
+  // Real-time queue events
+  useEffect(() => {
+    // Legacy booking events
     const handleBooking = (data) => {
       setToast({ message: `Booking updated: ${data.customerName}`, type: 'booking' });
       fetchData();
     };
-    const handleWaitlist = (data) => {
-      setToast({ message: `Waitlist updated: ${data.customerName}`, type: 'waitlist' });
-      fetchData();
+
+    // New queue events
+    const handleQueueNew = (data) => {
+      setToast({ message: `New in queue: ${data.entry?.customerName}`, type: 'queue' });
+      setWaitlist(prev => {
+        if (prev.find(e => e._id === data.entry._id)) return prev;
+        return [...prev, data.entry];
+      });
+      setStats(prev => ({ ...prev, waitlistCount: data.totalWaiting }));
+    };
+
+    const handleQueueUpdate = (data) => {
+      const { entry, action } = data;
+      setWaitlist(prev => prev.map(e => e._id === entry._id ? entry : e));
+
+      if (action === 'called') {
+        setToast({ message: `Called: ${entry.customerName}`, type: 'queue' });
+        setStats(prev => ({
+          ...prev,
+          servingCount: prev.servingCount + 1,
+          waitlistCount: Math.max(0, prev.waitlistCount - 1),
+        }));
+      } else if (action === 'approved') {
+        setToast({ message: `Approved: ${entry.customerName}`, type: 'queue' });
+      } else if (action === 'skipped' || action === 'cancelled') {
+        setToast({ message: `${action === 'skipped' ? 'Skipped' : 'Cancelled'}: ${entry.customerName}`, type: 'queue' });
+        setStats(prev => ({ ...prev, waitlistCount: Math.max(0, prev.waitlistCount - 1) }));
+      } else if (action === 'rejected') {
+        setToast({ message: `Rejected: ${entry.customerName}`, type: 'queue' });
+      }
+    };
+
+    const handleQueueRemove = (data) => {
+      setWaitlist(prev => prev.filter(e => e._id !== data.entryId));
+      setStats(prev => ({ ...prev, completedCount: prev.completedCount + 1, servingCount: Math.max(0, prev.servingCount - 1) }));
+    };
+
+    const handlePositionsShifted = (data) => {
+      setWaitlist(prev => prev.map(e => {
+        const shifted = data.entries?.find(s => s._id === e._id);
+        return shifted ? { ...e, position: shifted.position } : e;
+      }));
     };
 
     on('booking:updated', handleBooking);
-    on('waitlist:updated', handleWaitlist);
+    on('queue:new', handleQueueNew);
+    on('queue:update', handleQueueUpdate);
+    on('queue:remove', handleQueueRemove);
+    on('queue:positions-shifted', handlePositionsShifted);
     on('availability:changed', fetchData);
 
     return () => {
       off('booking:updated', handleBooking);
-      off('waitlist:updated', handleWaitlist);
+      off('queue:new', handleQueueNew);
+      off('queue:update', handleQueueUpdate);
+      off('queue:remove', handleQueueRemove);
+      off('queue:positions-shifted', handlePositionsShifted);
       off('availability:changed', fetchData);
     };
   }, [on, off, fetchData]);
@@ -83,18 +139,51 @@ export default function DashboardPage() {
   }, [toast]);
 
   const updateBookingStatus = async (id, status) => { await api.put(`/bookings/${id}/status`, { status }); fetchData(); };
-  const updateWaitlistStatus = async (id, status) => { await api.put(`/waitlist/${id}/status`, { status }); fetchData(); };
-  const approveWaitlist = async (id) => { await api.put(`/waitlist/${id}/approve`); fetchData(); };
+  const approveWaitlist = async (id) => { await api.put(`/waitlist/${id}/approve`); };
   const rejectWaitlist = async (id) => {
     await api.put(`/waitlist/${id}/reject`, { reason: rejectReason });
     setRejectModal(null);
     setRejectReason('');
-    fetchData();
+  };
+
+  const callNext = async () => {
+    setCallingNext(true);
+    try {
+      await api.put('/waitlist/call-next');
+    } catch (err) {
+      const msg = err.response?.data?.message || 'Failed to call next';
+      setToast({ message: msg, type: 'error' });
+    }
+    setCallingNext(false);
+  };
+
+  const skipEntry = async (id) => {
+    try {
+      await api.put(`/waitlist/${id}/skip`);
+    } catch (err) {
+      setToast({ message: err.response?.data?.message || 'Failed to skip', type: 'error' });
+    }
+  };
+
+  const completeEntry = async (id) => {
+    try {
+      await api.put(`/waitlist/${id}/complete`);
+    } catch (err) {
+      setToast({ message: err.response?.data?.message || 'Failed to complete', type: 'error' });
+    }
+  };
+
+  const seatEntry = async (id) => {
+    try {
+      await api.put(`/waitlist/${id}/seat`);
+    } catch (err) {
+      setToast({ message: err.response?.data?.message || 'Failed to seat', type: 'error' });
+    }
   };
 
   const statCards = [
     { label: 'Currently Serving', value: stats.servingCount, icon: UtensilsCrossed, gradient: 'from-emerald-500 to-teal-600', change: '+12%' },
-    { label: 'In Waitlist', value: stats.waitlistCount, icon: Clock, gradient: 'from-amber-500 to-orange-600', change: '+5%' },
+    { label: 'In Queue', value: stats.waitlistCount, icon: Clock, gradient: 'from-amber-500 to-orange-600', change: '+5%' },
     { label: 'Bookings Today', value: stats.bookingCount, icon: Users, gradient: 'from-blue-500 to-indigo-600', change: '+8%' },
     { label: 'Completed', value: stats.completedCount, icon: CheckCircle2, gradient: 'from-gray-400 to-gray-600', change: '' },
   ];
@@ -108,8 +197,15 @@ export default function DashboardPage() {
             initial={{ opacity: 0, y: -20, x: '-50%' }}
             animate={{ opacity: 1, y: 0, x: '-50%' }}
             exit={{ opacity: 0, y: -20, x: '-50%' }}
-            className="fixed top-4 left-1/2 z-50 px-5 py-3 rounded-xl shadow-elevated border text-sm font-medium bg-white border-gray-200 text-gray-800"
+            className={`fixed top-4 left-1/2 z-50 px-5 py-3 rounded-xl shadow-elevated border text-sm font-medium flex items-center gap-2 ${
+              toast.type === 'error'
+                ? 'bg-red-50 border-red-200 text-red-700'
+                : toast.type === 'queue'
+                ? 'bg-amber-50 border-amber-200 text-amber-800'
+                : 'bg-white border-gray-200 text-gray-800'
+            }`}
           >
+            {toast.type === 'queue' && <Bell size={14} />}
             {toast.message}
           </motion.div>
         )}
@@ -161,9 +257,20 @@ export default function DashboardPage() {
               <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Dashboard</h1>
               <p className="text-gray-400 text-sm mt-1">Today's restaurant activity overview</p>
             </div>
-            <button onClick={fetchData} className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-xl text-sm text-gray-600 hover:bg-gray-50 hover:border-gray-300 transition-all shadow-soft">
-              <RefreshCw size={14} /> Refresh
-            </button>
+            <div className="flex items-center gap-2">
+              <button onClick={callNext} disabled={callingNext}
+                className="flex items-center gap-2 px-5 py-2.5 gradient-primary text-white rounded-xl text-sm font-semibold shadow-glow hover:opacity-90 disabled:opacity-50 transition-all">
+                {callingNext ? (
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                ) : (
+                  <PhoneForwarded size={15} />
+                )}
+                Call Next
+              </button>
+              <button onClick={fetchData} className="flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-600 hover:bg-gray-50 hover:border-gray-300 transition-all shadow-soft">
+                <RefreshCw size={14} /> Refresh
+              </button>
+            </div>
           </div>
 
           {/* Stat Cards */}
@@ -192,28 +299,32 @@ export default function DashboardPage() {
           <StaggerContainer className="grid grid-cols-1 lg:grid-cols-2 gap-6" delay={0.3}>
             {(() => {
               const serving = [
-                ...bookings.filter(b => b.status === 'serving').map(b => ({ ...b, type: 'booking' })),
-                ...waitlist.filter(w => w.status === 'serving').map(w => ({ ...w, type: 'waitlist' })),
+                ...bookings.filter(b => b.status === 'serving').map(b => ({ ...b, _type: 'booking' })),
+                ...waitlist.filter(w => w.status === 'serving').map(w => ({ ...w, _type: 'waitlist' })),
               ];
-              const waiting = waitlist.filter(w => ['waiting', 'approved'].includes(w.status));
+              const waiting = waitlist
+                .filter(w => ['waiting', 'approved'].includes(w.status))
+                .sort((a, b) => (a.position || 999) - (b.position || 999));
               const upcoming = bookings.filter(b => ['pending', 'confirmed', 'arrived'].includes(b.status));
               const completed = [
-                ...bookings.filter(b => b.status === 'completed').map(b => ({ ...b, type: 'booking' })),
-                ...waitlist.filter(w => w.status === 'completed').map(w => ({ ...w, type: 'waitlist' })),
+                ...bookings.filter(b => b.status === 'completed').map(b => ({ ...b, _type: 'booking' })),
+                ...waitlist.filter(w => w.status === 'completed').map(w => ({ ...w, _type: 'waitlist' })),
               ];
               return (
                 <>
                   <StaggerItem>
                     <Section title="Currently Serving" icon={UtensilsCrossed} count={serving.length} items={serving}
                       color="emerald" onAction={(item) =>
-                        item.type === 'booking' ? updateBookingStatus(item._id, 'completed') : updateWaitlistStatus(item._id, 'completed')
+                        item._type === 'booking' ? updateBookingStatus(item._id, 'completed') : completeEntry(item._id)
                       } actionLabel="Complete" />
                   </StaggerItem>
                   <StaggerItem>
-                    <Section title="Waitlist" icon={Clock} count={waiting.length} items={waiting}
-                      color="amber" onAction={(item) => updateWaitlistStatus(item._id, 'serving')} actionLabel="Serve Now"
+                    <QueueSection title="Live Queue" icon={Clock} count={waiting.length} items={waiting}
+                      color="amber"
                       onApprove={(item) => approveWaitlist(item._id)}
-                      onReject={(item) => setRejectModal(item)} />
+                      onReject={(item) => setRejectModal(item)}
+                      onSkip={(item) => skipEntry(item._id)}
+                      onSeat={(item) => seatEntry(item._id)} />
                   </StaggerItem>
                   <StaggerItem>
                     <Section title="Upcoming Bookings" icon={Users} count={upcoming.length} items={upcoming}
@@ -233,7 +344,99 @@ export default function DashboardPage() {
   );
 }
 
-function Section({ title, icon: Icon, count, items, color, onAction, actionLabel, onApprove, onReject }) {
+/** Queue section with position numbers + skip buttons */
+function QueueSection({ title, icon: Icon, count, items, color, onApprove, onReject, onSkip, onSeat }) {
+  const colorMap = {
+    amber: 'from-amber-500 to-orange-600',
+  };
+
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-card overflow-hidden">
+      <div className="px-5 py-4 flex items-center justify-between border-b border-gray-50">
+        <div className="flex items-center gap-3">
+          <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${colorMap[color]} flex items-center justify-center`}>
+            <Icon size={15} className="text-white" />
+          </div>
+          <h2 className="font-semibold text-gray-900 text-[15px]">{title}</h2>
+        </div>
+        <span className="text-[12px] font-semibold text-gray-400 bg-gray-50 px-2.5 py-1 rounded-lg">{count}</span>
+      </div>
+      <div className="divide-y divide-gray-50/80 max-h-[400px] overflow-y-auto">
+        {items.length === 0 && (
+          <div className="px-5 py-12 text-center">
+            <div className="w-12 h-12 bg-gray-50 rounded-xl flex items-center justify-center mx-auto mb-3">
+              <Icon size={20} className="text-gray-300" />
+            </div>
+            <p className="text-sm text-gray-400">No active records.</p>
+          </div>
+        )}
+        <AnimatePresence initial={false}>
+          {items.map((item) => {
+            const cfg = statusConfig[item.status] || statusConfig.waiting;
+            return (
+              <motion.div
+                key={item._id}
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.2 }}
+                className="px-5 py-3.5 flex items-center justify-between hover:bg-gray-50/50 transition-colors group"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  {/* Position badge */}
+                  <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center text-[13px] font-bold text-white shrink-0">
+                    {item.position || '?'}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-gray-900 truncate">{item.customerName}</p>
+                    <p className="text-[11px] text-gray-400">
+                      Party of {item.partySize}
+                      {item.customerPhone ? ` \u00B7 ${item.customerPhone}` : ''}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold ${cfg.bg} ${cfg.text} border ${cfg.border}`}>
+                    <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />
+                    {item.status}
+                  </span>
+                  <div className="opacity-0 group-hover:opacity-100 flex items-center gap-1 transition-all duration-200">
+                    {item.status === 'waiting' && onApprove && (
+                      <button onClick={() => onApprove(item)} title="Approve"
+                        className="w-7 h-7 rounded-lg bg-emerald-50 border border-emerald-200/60 flex items-center justify-center text-emerald-600 hover:bg-emerald-100">
+                        <ThumbsUp size={12} />
+                      </button>
+                    )}
+                    {item.status === 'waiting' && onReject && (
+                      <button onClick={() => onReject(item)} title="Reject"
+                        className="w-7 h-7 rounded-lg bg-red-50 border border-red-200/60 flex items-center justify-center text-red-500 hover:bg-red-100">
+                        <ThumbsDown size={12} />
+                      </button>
+                    )}
+                    {item.status === 'approved' && onSeat && (
+                      <button onClick={() => onSeat(item)} title="Seat — Start Serving"
+                        className="w-7 h-7 rounded-lg bg-blue-50 border border-blue-200/60 flex items-center justify-center text-blue-600 hover:bg-blue-100">
+                        <ArrowRight size={12} />
+                      </button>
+                    )}
+                    {['waiting', 'approved'].includes(item.status) && onSkip && (
+                      <button onClick={() => onSkip(item)} title="Skip"
+                        className="w-7 h-7 rounded-lg bg-gray-50 border border-gray-200/60 flex items-center justify-center text-gray-500 hover:bg-gray-100">
+                        <SkipForward size={12} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </motion.div>
+            );
+          })}
+        </AnimatePresence>
+      </div>
+    </div>
+  );
+}
+
+function Section({ title, icon: Icon, count, items, color, onAction, actionLabel }) {
   const colorMap = {
     emerald: 'from-emerald-500 to-teal-600',
     amber: 'from-amber-500 to-orange-600',
@@ -258,7 +461,7 @@ function Section({ title, icon: Icon, count, items, color, onAction, actionLabel
             <div className="w-12 h-12 bg-gray-50 rounded-xl flex items-center justify-center mx-auto mb-3">
               <Icon size={20} className="text-gray-300" />
             </div>
-            <p className="text-sm text-gray-400">No entries yet</p>
+            <p className="text-sm text-gray-400">No active records.</p>
           </div>
         )}
         {items.map((item) => {
@@ -282,20 +485,7 @@ function Section({ title, icon: Icon, count, items, color, onAction, actionLabel
                   <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />
                   {item.status}
                 </span>
-                {/* Approve/Reject for waiting items */}
-                {onApprove && item.status === 'waiting' && (
-                  <div className="opacity-0 group-hover:opacity-100 flex items-center gap-1 transition-all duration-200">
-                    <button onClick={() => onApprove(item)} title="Approve"
-                      className="w-7 h-7 rounded-lg bg-emerald-50 border border-emerald-200/60 flex items-center justify-center text-emerald-600 hover:bg-emerald-100">
-                      <ThumbsUp size={12} />
-                    </button>
-                    <button onClick={() => onReject(item)} title="Reject"
-                      className="w-7 h-7 rounded-lg bg-red-50 border border-red-200/60 flex items-center justify-center text-red-500 hover:bg-red-100">
-                      <ThumbsDown size={12} />
-                    </button>
-                  </div>
-                )}
-                {onAction && !(['waiting'].includes(item.status) && onApprove) && (
+                {onAction && (
                   <button onClick={() => onAction(item)}
                     className="opacity-0 group-hover:opacity-100 text-primary-600 hover:text-primary-700 text-[12px] font-semibold flex items-center gap-1 transition-all duration-200 bg-primary-50 px-2.5 py-1 rounded-lg">
                     {actionLabel} <ArrowRight size={11} />

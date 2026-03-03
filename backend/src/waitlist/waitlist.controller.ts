@@ -38,6 +38,56 @@ export class WaitlistController {
     return this.waitlistService.reject(id, reason);
   }
 
+  /**
+   * PUT /api/waitlist/call-next
+   * Call the next person in the queue (optimistic locking).
+   */
+  @Put('call-next')
+  callNext(
+    @CurrentUser('businessId') businessId: string,
+    @CurrentUser('userId') adminId: string,
+  ) {
+    return this.waitlistService.callNext(businessId, adminId);
+  }
+
+  /**
+   * PUT /api/waitlist/:id/seat
+   * Seat an approved entry — move to serving (optimistic locking).
+   */
+  @Put(':id/seat')
+  seat(
+    @Param('id') id: string,
+    @CurrentUser('businessId') businessId: string,
+    @CurrentUser('userId') adminId: string,
+  ) {
+    return this.waitlistService.seat(id, businessId, adminId);
+  }
+
+  /**
+   * PUT /api/waitlist/:id/skip
+   * Skip a queue entry (optimistic locking).
+   */
+  @Put(':id/skip')
+  skip(
+    @Param('id') id: string,
+    @CurrentUser('businessId') businessId: string,
+    @CurrentUser('userId') adminId: string,
+  ) {
+    return this.waitlistService.skip(id, businessId, adminId);
+  }
+
+  /**
+   * PUT /api/waitlist/:id/complete
+   * Mark a serving entry as completed (optimistic locking).
+   */
+  @Put(':id/complete')
+  complete(
+    @Param('id') id: string,
+    @CurrentUser('businessId') businessId: string,
+  ) {
+    return this.waitlistService.complete(id, businessId);
+  }
+
   @Put(':id')
   update(@Param('id') id: string, @Body() data: any) {
     return this.waitlistService.update(id, data);

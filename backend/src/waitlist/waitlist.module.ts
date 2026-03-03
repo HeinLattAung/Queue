@@ -7,6 +7,7 @@ import { Waitlist, WaitlistSchema } from './schemas/waitlist.schema';
 import { AuthModule } from '../auth/auth.module';
 import { EventsModule } from '../events/events.module';
 import { QrTokenModule } from '../qr-token/qr-token.module';
+import { BusinessModule } from '../business/business.module';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { QrTokenModule } from '../qr-token/qr-token.module';
     AuthModule,
     EventsModule,
     QrTokenModule,
+    BusinessModule,
   ],
   controllers: [WaitlistController, PublicWaitlistController],
   providers: [WaitlistService],

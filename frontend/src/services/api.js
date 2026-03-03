@@ -15,9 +15,19 @@ api.interceptors.response.use(
   (res) => res,
   (err) => {
     if (err.response?.status === 401) {
+      // Don't redirect on auth endpoint failures (login/signup) — those are expected 401s
+      const url = err.config?.url || '';
+      if (url.includes('/auth/login') || url.includes('/auth/signup') || url.includes('/auth/customer/signup')) {
+        return Promise.reject(err);
+      }
+      const user = JSON.parse(localStorage.getItem('user') || 'null');
       localStorage.removeItem('token');
       localStorage.removeItem('user');
-      window.location.href = '/login';
+      if (user?.role === 'customer') {
+        window.location.href = '/customer/login';
+      } else {
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(err);
   }

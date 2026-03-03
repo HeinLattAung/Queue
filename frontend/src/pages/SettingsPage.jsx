@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Plus, Pencil, Trash2, X, Save, Clock, Table2, UserCog, Utensils } from 'lucide-react';
+import { Plus, Pencil, Trash2, X, Save, Clock, Table2, UserCog, Utensils, MapPin } from 'lucide-react';
 import { StaggerContainer, StaggerItem } from '../components/animation/StaggerContainer';
 import api from '../services/api';
 
@@ -11,6 +11,7 @@ const tabs = [
   { id: 'tables', label: 'Tables', icon: Table2 },
   { id: 'staff', label: 'Staff', icon: UserCog },
   { id: 'meals', label: 'Menu', icon: Utensils },
+  { id: 'location', label: 'Location', icon: MapPin },
 ];
 
 export default function SettingsPage() {
@@ -56,6 +57,7 @@ export default function SettingsPage() {
           {tab === 'tables' && <TablesSection />}
           {tab === 'staff' && <StaffSection />}
           {tab === 'meals' && <MealsSection />}
+          {tab === 'location' && <LocationSection />}
         </motion.div>
       </AnimatePresence>
     </div>
@@ -499,6 +501,165 @@ function MealsSection() {
           </div>
         )}
       </StaggerContainer>
+    </div>
+  );
+}
+
+function LocationSection() {
+  const [form, setForm] = useState({ latitude: '', longitude: '', geoFenceRadius: 100, location: '' });
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [detecting, setDetecting] = useState(false);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    api.get('/business').then(({ data }) => {
+      setForm({
+        latitude: data.geoLocation?.coordinates?.[1] || '',
+        longitude: data.geoLocation?.coordinates?.[0] || '',
+        geoFenceRadius: data.geoFenceRadius || 100,
+        location: data.location || '',
+      });
+    }).catch(() => {});
+  }, []);
+
+  const detectLocation = () => {
+    if (!navigator.geolocation) {
+      setError('Geolocation is not supported by your browser.');
+      return;
+    }
+    setDetecting(true);
+    setError(null);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setForm(prev => ({
+          ...prev,
+          latitude: pos.coords.latitude.toFixed(6),
+          longitude: pos.coords.longitude.toFixed(6),
+        }));
+        setDetecting(false);
+      },
+      (err) => {
+        setError('Failed to detect location. Please enter coordinates manually.');
+        setDetecting(false);
+      },
+      { enableHighAccuracy: true, timeout: 10000 },
+    );
+  };
+
+  const save = async () => {
+    setSaving(true);
+    setError(null);
+    try {
+      await api.put('/business', {
+        location: form.location,
+        geoLocation: {
+          type: 'Point',
+          coordinates: [parseFloat(form.longitude) || 0, parseFloat(form.latitude) || 0],
+        },
+        geoFenceRadius: parseInt(form.geoFenceRadius) || 100,
+      });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch {
+      setError('Failed to save location settings.');
+    }
+    setSaving(false);
+  };
+
+  const hasCoords = form.latitude && form.longitude && form.latitude !== '0' && form.longitude !== '0';
+
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-card p-6 max-w-2xl">
+      <div className="flex items-center gap-3 mb-6">
+        <div className="w-9 h-9 rounded-xl bg-blue-50 flex items-center justify-center">
+          <MapPin size={17} className="text-blue-600" />
+        </div>
+        <div>
+          <h2 className="font-bold text-gray-900 text-[15px]">Shop Location & Geofence</h2>
+          <p className="text-[12px] text-gray-400">Set GPS coordinates to enable geofence verification for QR queue entry</p>
+        </div>
+      </div>
+
+      {error && (
+        <div className="mb-4 px-4 py-3 bg-red-50 border border-red-200/60 rounded-xl text-sm text-red-600">{error}</div>
+      )}
+
+      <div className="space-y-5">
+        {/* Address */}
+        <div>
+          <label className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Shop Address</label>
+          <input value={form.location} onChange={e => setForm({ ...form, location: e.target.value })}
+            placeholder="123 Main Street, City"
+            className="w-full mt-1.5 px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder:text-gray-400" />
+        </div>
+
+        {/* GPS Coordinates */}
+        <div>
+          <div className="flex items-center justify-between mb-1.5">
+            <label className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">GPS Coordinates</label>
+            <button onClick={detectLocation} disabled={detecting}
+              className="text-[12px] font-medium text-primary-600 hover:text-primary-700 flex items-center gap-1.5 disabled:opacity-50">
+              {detecting ? (
+                <><div className="w-3 h-3 border-[1.5px] border-primary-300 border-t-primary-600 rounded-full animate-spin" /> Detecting...</>
+              ) : (
+                <><MapPin size={12} /> Detect My Location</>
+              )}
+            </button>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-[10px] text-gray-400">Latitude</label>
+              <input type="number" step="any" value={form.latitude} onChange={e => setForm({ ...form, latitude: e.target.value })}
+                placeholder="e.g. 1.3521"
+                className="w-full mt-1 px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder:text-gray-400" />
+            </div>
+            <div>
+              <label className="text-[10px] text-gray-400">Longitude</label>
+              <input type="number" step="any" value={form.longitude} onChange={e => setForm({ ...form, longitude: e.target.value })}
+                placeholder="e.g. 103.8198"
+                className="w-full mt-1 px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder:text-gray-400" />
+            </div>
+          </div>
+          {hasCoords && (
+            <p className="mt-2 text-[11px] text-emerald-600 font-medium flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Geofence will be active for QR queue entry
+            </p>
+          )}
+          {!hasCoords && (
+            <p className="mt-2 text-[11px] text-gray-400">
+              No coordinates set. Geofence verification is disabled — customers can join from anywhere.
+            </p>
+          )}
+        </div>
+
+        {/* Geofence Radius */}
+        <div>
+          <label className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Geofence Radius (meters)</label>
+          <div className="flex items-center gap-4 mt-1.5">
+            <input type="range" min={10} max={500} step={10} value={form.geoFenceRadius}
+              onChange={e => setForm({ ...form, geoFenceRadius: e.target.value })}
+              className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-primary-600" />
+            <div className="w-20 text-center">
+              <input type="number" min={10} max={5000} value={form.geoFenceRadius}
+                onChange={e => setForm({ ...form, geoFenceRadius: e.target.value })}
+                className="w-full px-2 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-center font-semibold text-gray-900" />
+            </div>
+          </div>
+          <p className="text-[11px] text-gray-400 mt-1.5">
+            Customers must be within {form.geoFenceRadius}m of the shop to join the queue via QR.
+            {form.geoFenceRadius <= 50 && ' (Very strict — may cause false rejections indoors)'}
+            {form.geoFenceRadius >= 300 && ' (Very permissive — allows joining from nearby streets)'}
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-6 pt-4 border-t border-gray-100">
+        <button onClick={save} disabled={saving}
+          className="gradient-primary text-white px-5 py-2.5 rounded-xl text-[13px] font-semibold hover:opacity-90 disabled:opacity-50 transition-all shadow-glow flex items-center gap-2">
+          {saved ? <><Save size={15} /> Saved!</> : saving ? 'Saving...' : <><Save size={15} /> Save Location</>}
+        </button>
+      </div>
     </div>
   );
 }

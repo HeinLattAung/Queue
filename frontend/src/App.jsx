@@ -20,6 +20,9 @@ import LandingPage from './pages/LandingPage';
 import CustomerLoginPage from './pages/customer/CustomerLoginPage';
 import CustomerSignupPage from './pages/customer/CustomerSignupPage';
 import CustomerHomePage from './pages/customer/CustomerHomePage';
+import JoinQueuePage from './pages/customer/JoinQueuePage';
+import QueueStatusPage from './pages/customer/QueueStatusPage';
+import OrderPage from './pages/customer/OrderPage';
 
 function App() {
   return (
@@ -35,6 +38,11 @@ function App() {
       <Route path="/customer/login" element={<CustomerLoginPage />} />
       <Route path="/customer/signup" element={<CustomerSignupPage />} />
       <Route path="/customer/home" element={<CustomerHomePage />} />
+
+      {/* Queue (QR scan flow — standalone pages, no CustomerLayout) */}
+      <Route path="/join" element={<JoinQueuePage />} />
+      <Route path="/queue/status" element={<QueueStatusPage />} />
+      <Route path="/order" element={<OrderPage />} />
 
       {/* Admin Portal */}
       <Route element={<AdminLayout />}>
