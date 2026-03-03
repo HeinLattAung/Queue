@@ -78,8 +78,10 @@ export default function CustomerHomePage() {
   useEffect(() => {
     return () => {
       if (scannerInstanceRef.current) {
-        scannerInstanceRef.current.stop().catch(() => {});
-        scannerInstanceRef.current.clear();
+        try {
+          scannerInstanceRef.current.stop().catch(() => {});
+          scannerInstanceRef.current.clear();
+        } catch {}
         scannerInstanceRef.current = null;
       }
     };
@@ -124,11 +126,11 @@ export default function CustomerHomePage() {
     setScanResult(decodedText);
 
     // Haptic: two quick pulses
-    if (navigator.vibrate) navigator.vibrate([60, 30, 60]);
+    try { navigator.vibrate?.([60, 30, 60]); } catch {}
 
     // Stop the scanner (camera stays as frozen/blurred background)
     if (scannerInstanceRef.current) {
-      scannerInstanceRef.current.stop().catch(() => {});
+      try { scannerInstanceRef.current.stop().catch(() => {}); } catch {}
     }
 
     // Parse QR & open bottom sheet
@@ -240,7 +242,7 @@ export default function CustomerHomePage() {
 
   const handleLogout = () => {
     if (scannerInstanceRef.current) {
-      scannerInstanceRef.current.stop().catch(() => {});
+      try { scannerInstanceRef.current.stop().catch(() => {}); } catch {}
     }
     logout();
     navigate('/');
