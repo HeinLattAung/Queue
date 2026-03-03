@@ -17,7 +17,7 @@ api.interceptors.response.use(
     if (err.response?.status === 401) {
       // Don't redirect on auth endpoint failures (login/signup) — those are expected 401s
       const url = err.config?.url || '';
-      if (url.includes('/auth/login') || url.includes('/auth/signup') || url.includes('/auth/customer/signup')) {
+      if (url.includes('/auth/login') || url.includes('/auth/signup') || url.includes('/auth/customer/signup') || url.includes('/public/')) {
         return Promise.reject(err);
       }
       const user = JSON.parse(localStorage.getItem('user') || 'null');
