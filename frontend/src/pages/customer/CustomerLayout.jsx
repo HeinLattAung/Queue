@@ -105,7 +105,7 @@ export default function CustomerLayout() {
       </div>
 
       {/* Header */}
-      <header className="relative z-10 px-6 pt-8 pb-4 text-center">
+      <header className="relative z-10 px-4 sm:px-6 pt-8 pb-4 text-center">
         <div className="inline-flex items-center gap-2.5 px-4 py-2 bg-white/5 backdrop-blur-sm border border-white/10 rounded-full mb-4">
           <div className="w-6 h-6 gradient-primary rounded-lg flex items-center justify-center">
             <Sparkles size={12} className="text-white" />
@@ -115,7 +115,7 @@ export default function CustomerLayout() {
       </header>
 
       {/* Content */}
-      <main className="relative z-10 px-6 pb-12">
+      <main className="relative z-10 px-4 sm:px-6 pb-12">
         <Outlet context={{ business, businessId: businessId || business?._id?.toString(), bookingType, token, tokenData: tokenValid }} />
       </main>
     </div>

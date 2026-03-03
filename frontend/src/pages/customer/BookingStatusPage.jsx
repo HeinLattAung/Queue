@@ -73,7 +73,7 @@ export default function BookingStatusPage() {
   const canCancel = ['pending', 'confirmed'].includes(booking.status);
 
   return (
-    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="max-w-md mx-auto">
+    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="max-w-md sm:max-w-lg mx-auto">
       {/* Status Card */}
       <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-8 text-center mb-6">
         {isCancelled ? (

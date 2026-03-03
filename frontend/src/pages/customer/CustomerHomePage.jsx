@@ -290,7 +290,7 @@ export default function CustomerHomePage() {
         <div className="absolute top-[50%] left-[60%] w-[300px] h-[300px] bg-orange-600/4 rounded-full blur-[100px]" />
       </div>
 
-      <div className="relative z-10 max-w-lg mx-auto min-h-screen flex flex-col">
+      <div className="relative z-10 max-w-lg sm:max-w-xl mx-auto min-h-screen flex flex-col">
         {/* ═══════════ GLASSMORPHISM HEADER ═══════════ */}
         <motion.header
           initial={{ opacity: 0, y: -20 }}

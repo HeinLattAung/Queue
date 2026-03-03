@@ -36,7 +36,7 @@ export default function CustomersPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Customers</h1>
           <p className="text-gray-400 text-sm mt-1">{total} total registered customers</p>
@@ -51,7 +51,7 @@ export default function CustomersPage() {
       <div className="bg-white rounded-2xl border border-gray-100 shadow-card overflow-hidden">
         {/* Filters */}
         <div className="p-5 border-b border-gray-50 flex flex-wrap gap-3 items-center">
-          <form onSubmit={handleSearch} className="relative flex-1 min-w-[240px]">
+          <form onSubmit={handleSearch} className="relative flex-1 min-w-0">
             <Search size={15} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" />
             <input
               value={search} onChange={e => setSearch(e.target.value)}
@@ -75,11 +75,11 @@ export default function CustomersPage() {
           <table className="w-full">
             <thead>
               <tr className="border-b border-gray-50">
-                <th className="px-6 py-3.5 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Customer</th>
-                <th className="px-6 py-3.5 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Email</th>
-                <th className="px-6 py-3.5 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Phone</th>
-                <th className="px-6 py-3.5 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Visits</th>
-                <th className="px-6 py-3.5 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Status</th>
+                <th className="px-3 md:px-6 py-3.5 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Customer</th>
+                <th className="px-3 md:px-6 py-3.5 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider hidden md:table-cell">Email</th>
+                <th className="px-3 md:px-6 py-3.5 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider hidden md:table-cell">Phone</th>
+                <th className="px-3 md:px-6 py-3.5 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Visits</th>
+                <th className="px-3 md:px-6 py-3.5 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Status</th>
               </tr>
             </thead>
             <AnimatePresence mode="wait">
@@ -116,7 +116,7 @@ export default function CustomersPage() {
                       transition={{ delay: index * 0.04, duration: 0.25 }}
                       className="hover:bg-gray-50/50 transition-colors"
                     >
-                      <td className="px-6 py-4">
+                      <td className="px-3 md:px-6 py-4">
                         <div className="flex items-center gap-3">
                           <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center text-white text-[12px] font-bold">
                             {c.name?.[0]?.toUpperCase()}
@@ -124,12 +124,12 @@ export default function CustomersPage() {
                           <span className="text-sm font-semibold text-gray-900">{c.name}</span>
                         </div>
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-500">{c.email || '\u2014'}</td>
-                      <td className="px-6 py-4 text-sm text-gray-500">{c.phone || '\u2014'}</td>
-                      <td className="px-6 py-4">
+                      <td className="px-3 md:px-6 py-4 text-sm text-gray-500 hidden md:table-cell">{c.email || '\u2014'}</td>
+                      <td className="px-3 md:px-6 py-4 text-sm text-gray-500 hidden md:table-cell">{c.phone || '\u2014'}</td>
+                      <td className="px-3 md:px-6 py-4">
                         <span className="text-sm font-semibold text-gray-900">{c.totalVisits}</span>
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-3 md:px-6 py-4">
                         <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold
                           ${c.status === 'active'
                             ? 'bg-emerald-50 text-emerald-600 border border-emerald-200/60'

@@ -260,7 +260,7 @@ export default function QueueStatusPage() {
 
       <main className="relative z-10 px-6 pt-10 pb-12">
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}
-          className="max-w-md mx-auto">
+          className="max-w-md sm:max-w-lg mx-auto">
 
           {/* Digital Ticket */}
           <div className="relative">

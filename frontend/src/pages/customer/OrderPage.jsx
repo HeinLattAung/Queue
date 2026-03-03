@@ -258,7 +258,7 @@ export default function OrderPage() {
         <div className="absolute top-[50%] left-[60%] w-[300px] h-[300px] bg-orange-600/4 rounded-full blur-[100px]" />
       </div>
 
-      <div className="relative z-10 max-w-lg mx-auto min-h-screen flex flex-col">
+      <div className="relative z-10 max-w-lg sm:max-w-2xl mx-auto min-h-screen flex flex-col">
         <AnimatePresence mode="wait">
           {/* ═══════════ LOADING ═══════════ */}
           {(phase === 'loading' || error) && (
@@ -361,7 +361,7 @@ export default function OrderPage() {
 
               {/* Meal grid */}
               <div className="flex-1 px-4 py-4 pb-32">
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                   {filteredMeals.map((meal, i) => {
                     const qty = cart[meal._id]?.quantity || 0;
                     return (

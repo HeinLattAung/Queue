@@ -17,7 +17,7 @@ const navItems = [
   { to: '/scan', icon: ScanLine, label: 'Scan QR' },
 ];
 
-export default function Sidebar() {
+export default function Sidebar({ open, onClose }) {
   const { user, logout } = useAuthStore();
   const navigate = useNavigate();
   const location = useLocation();
@@ -28,8 +28,12 @@ export default function Sidebar() {
     navigate('/login');
   };
 
-  return (
-    <aside className="fixed left-0 top-0 h-screen w-[260px] bg-white/80 backdrop-blur-xl border-r border-gray-200/60 flex flex-col z-40">
+  const handleNavClick = () => {
+    if (onClose) onClose();
+  };
+
+  const sidebarContent = (
+    <aside className="h-screen w-[260px] bg-white/80 backdrop-blur-xl border-r border-gray-200/60 flex flex-col">
       {/* Brand */}
       <div className="px-6 py-6">
         <div className="flex items-center gap-3">
@@ -53,6 +57,7 @@ export default function Sidebar() {
               <NavLink
                 key={to}
                 to={to}
+                onClick={handleNavClick}
                 className="relative group flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium transition-colors duration-200"
               >
                 {isActive && (
@@ -108,7 +113,7 @@ export default function Sidebar() {
               className="absolute bottom-full left-3 right-3 mb-2 bg-white rounded-xl shadow-elevated border border-gray-100 py-1.5"
             >
               <button
-                onClick={() => { navigate('/profile'); setProfileOpen(false); }}
+                onClick={() => { navigate('/profile'); setProfileOpen(false); handleNavClick(); }}
                 className="flex items-center gap-2.5 w-full px-4 py-2.5 text-[13px] text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors"
               >
                 <User size={15} strokeWidth={1.8} /> Profile Settings
@@ -125,5 +130,41 @@ export default function Sidebar() {
         </AnimatePresence>
       </div>
     </aside>
+  );
+
+  return (
+    <>
+      {/* Desktop sidebar — always visible on lg+ */}
+      <div className="hidden lg:block fixed left-0 top-0 z-40">
+        {sidebarContent}
+      </div>
+
+      {/* Mobile drawer overlay */}
+      <AnimatePresence>
+        {open && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 lg:hidden"
+              onClick={onClose}
+            />
+            {/* Drawer */}
+            <motion.div
+              initial={{ x: '-100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '-100%' }}
+              transition={{ type: 'spring', stiffness: 350, damping: 35 }}
+              className="fixed left-0 top-0 z-50 lg:hidden"
+            >
+              {sidebarContent}
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+    </>
   );
 }

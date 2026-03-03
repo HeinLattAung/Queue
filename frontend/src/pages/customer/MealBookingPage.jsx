@@ -224,7 +224,7 @@ export default function MealBookingPage() {
               {selectedDate && (
                 <div className="mb-4">
                   <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-2"><Clock size={12} className="inline mr-1" /> Time</label>
-                  <div className="grid grid-cols-4 gap-1.5">
+                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-1.5">
                     {timeSlots.map(t => (
                       <button key={t} onClick={() => setSelectedTime(t)}
                         className={`py-2 rounded-lg text-[12px] font-medium transition-all ${selectedTime === t ? 'gradient-primary text-white shadow-glow' : 'bg-white/5 text-slate-400 hover:bg-white/10 border border-white/5'}`}>{t}</button>

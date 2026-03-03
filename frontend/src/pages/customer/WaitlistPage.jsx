@@ -45,7 +45,7 @@ export default function WaitlistPage() {
   };
 
   return (
-    <div className="max-w-md mx-auto">
+    <div className="max-w-md sm:max-w-lg mx-auto">
       <AnimatePresence mode="wait">
         {step === 'success' ? (
           <motion.div key="success" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }}>

@@ -185,7 +185,7 @@ export default function JoinQueuePage() {
       )}
 
       <main className="relative z-10 px-6 pb-12">
-        <div className="max-w-md mx-auto">
+        <div className="max-w-md sm:max-w-lg mx-auto">
           <AnimatePresence mode="wait">
 
             {/* Validating */}

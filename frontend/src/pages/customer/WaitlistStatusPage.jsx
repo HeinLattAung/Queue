@@ -99,7 +99,7 @@ export default function WaitlistStatusPage() {
   const canCancel = ['waiting', 'approved'].includes(entry.status);
 
   return (
-    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="max-w-md mx-auto">
+    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="max-w-md sm:max-w-lg mx-auto">
       <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-8 text-center mb-6">
         <div className="mb-6">
           <p className="text-slate-400 text-sm mb-2">Hello, {entry.customerName}</p>

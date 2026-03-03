@@ -271,7 +271,7 @@ export default function BookingPage() {
                     <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-3">
                       <Clock size={12} className="inline mr-1" /> Select Time
                     </label>
-                    <div className="grid grid-cols-3 gap-2">
+                    <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
                       {store.availableSlots.map(slot => (
                         <button key={slot.time} onClick={() => selectTime(slot.time)} disabled={slot.available === 0}
                           className={`py-2.5 rounded-xl text-[13px] font-medium transition-all relative
