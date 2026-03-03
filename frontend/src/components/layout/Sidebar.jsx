@@ -17,7 +17,7 @@ const navItems = [
   { to: '/scan', icon: ScanLine, label: 'Scan QR' },
 ];
 
-export default function Sidebar({ open, onClose }) {
+function SidebarContent({ layoutPrefix, onNavClick }) {
   const { user, logout } = useAuthStore();
   const navigate = useNavigate();
   const location = useLocation();
@@ -28,11 +28,7 @@ export default function Sidebar({ open, onClose }) {
     navigate('/login');
   };
 
-  const handleNavClick = () => {
-    if (onClose) onClose();
-  };
-
-  const sidebarContent = (
+  return (
     <aside className="h-screen w-[260px] bg-white/80 backdrop-blur-xl border-r border-gray-200/60 flex flex-col">
       {/* Brand */}
       <div className="px-6 py-6">
@@ -57,12 +53,12 @@ export default function Sidebar({ open, onClose }) {
               <NavLink
                 key={to}
                 to={to}
-                onClick={handleNavClick}
+                onClick={onNavClick}
                 className="relative group flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium transition-colors duration-200"
               >
                 {isActive && (
                   <motion.div
-                    layoutId="sidebar-active"
+                    layoutId={`${layoutPrefix}-sidebar-active`}
                     className="absolute inset-0 gradient-primary rounded-xl shadow-glow"
                     transition={{ type: 'spring', stiffness: 350, damping: 30 }}
                   />
@@ -113,7 +109,7 @@ export default function Sidebar({ open, onClose }) {
               className="absolute bottom-full left-3 right-3 mb-2 bg-white rounded-xl shadow-elevated border border-gray-100 py-1.5"
             >
               <button
-                onClick={() => { navigate('/profile'); setProfileOpen(false); handleNavClick(); }}
+                onClick={() => { navigate('/profile'); setProfileOpen(false); if (onNavClick) onNavClick(); }}
                 className="flex items-center gap-2.5 w-full px-4 py-2.5 text-[13px] text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors"
               >
                 <User size={15} strokeWidth={1.8} /> Profile Settings
@@ -131,12 +127,14 @@ export default function Sidebar({ open, onClose }) {
       </div>
     </aside>
   );
+}
 
+export default function Sidebar({ open, onClose }) {
   return (
     <>
       {/* Desktop sidebar — always visible on lg+ */}
       <div className="hidden lg:block fixed left-0 top-0 z-40">
-        {sidebarContent}
+        <SidebarContent layoutPrefix="desktop" />
       </div>
 
       {/* Mobile drawer overlay */}
@@ -160,7 +158,7 @@ export default function Sidebar({ open, onClose }) {
               transition={{ type: 'spring', stiffness: 350, damping: 35 }}
               className="fixed left-0 top-0 z-50 lg:hidden"
             >
-              {sidebarContent}
+              <SidebarContent layoutPrefix="mobile" onNavClick={onClose} />
             </motion.div>
           </>
         )}

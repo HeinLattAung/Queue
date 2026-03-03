@@ -252,7 +252,7 @@ export default function DashboardPage() {
       ) : (
         <motion.div key="content" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }}>
           {/* Header */}
-          <div className="flex items-center justify-between mb-8">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
             <div>
               <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Dashboard</h1>
               <p className="text-gray-400 text-sm mt-1">Today's restaurant activity overview</p>
@@ -400,7 +400,7 @@ function QueueSection({ title, icon: Icon, count, items, color, onApprove, onRej
                     <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />
                     {item.status}
                   </span>
-                  <div className="opacity-0 group-hover:opacity-100 flex items-center gap-1 transition-all duration-200">
+                  <div className="flex lg:opacity-0 lg:group-hover:opacity-100 items-center gap-1 transition-all duration-200">
                     {item.status === 'waiting' && onApprove && (
                       <button onClick={() => onApprove(item)} title="Approve"
                         className="w-7 h-7 rounded-lg bg-emerald-50 border border-emerald-200/60 flex items-center justify-center text-emerald-600 hover:bg-emerald-100">
@@ -487,7 +487,7 @@ function Section({ title, icon: Icon, count, items, color, onAction, actionLabel
                 </span>
                 {onAction && (
                   <button onClick={() => onAction(item)}
-                    className="opacity-0 group-hover:opacity-100 text-primary-600 hover:text-primary-700 text-[12px] font-semibold flex items-center gap-1 transition-all duration-200 bg-primary-50 px-2.5 py-1 rounded-lg">
+                    className="lg:opacity-0 lg:group-hover:opacity-100 text-primary-600 hover:text-primary-700 text-[12px] font-semibold flex items-center gap-1 transition-all duration-200 bg-primary-50 px-2.5 py-1 rounded-lg">
                     {actionLabel} <ArrowRight size={11} />
                   </button>
                 )}
