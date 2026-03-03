@@ -1,4 +1,5 @@
 import { Controller, Post, UseGuards } from '@nestjs/common';
+import { randomBytes } from 'crypto';
 import { QrTokenService } from './qr-token.service';
 import { BusinessService } from '../business/business.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
@@ -22,10 +23,14 @@ export class QrTokenController {
   async generateQrToken(@CurrentUser('businessId') businessId: string) {
     const business = await this.businessService.getBusiness(businessId);
 
-    const token = this.qrTokenService.generateQrEntryToken(
-      businessId,
-      business.qrTokenSecret,
-    );
+    // Auto-generate qrTokenSecret for businesses created before this field existed
+    let secret = business.qrTokenSecret;
+    if (!secret) {
+      secret = randomBytes(32).toString('hex');
+      await this.businessService.updateBusiness(businessId, { qrTokenSecret: secret } as any);
+    }
+
+    const token = this.qrTokenService.generateQrEntryToken(businessId, secret);
 
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
     const bookingUrl = `${frontendUrl}/join?token=${token}`;
