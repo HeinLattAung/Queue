@@ -1,10 +1,11 @@
-import { AnimatePresence, motion } from 'motion/react';
+import { createPortal } from 'react-dom';
+import { AnimatePresence, motion as Motion } from 'motion/react';
 
 export default function AnimatedModal({ isOpen, onClose, children }) {
-  return (
+  return createPortal(
     <AnimatePresence>
       {isOpen && (
-        <motion.div
+        <Motion.div
           className="fixed inset-0 z-50 flex items-center justify-center p-4"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -13,8 +14,8 @@ export default function AnimatedModal({ isOpen, onClose, children }) {
           onClick={onClose}
         >
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-          <motion.div
-            className="relative"
+          <Motion.div
+            className="relative max-w-full max-h-[calc(100dvh-2rem)] overflow-y-auto overscroll-contain"
             initial={{ opacity: 0, scale: 0.95, y: 8 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 8 }}
@@ -22,9 +23,10 @@ export default function AnimatedModal({ isOpen, onClose, children }) {
             onClick={(e) => e.stopPropagation()}
           >
             {children}
-          </motion.div>
-        </motion.div>
+          </Motion.div>
+        </Motion.div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 }

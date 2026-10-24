@@ -24,7 +24,7 @@ export default function QRLinksPage() {
       const { data } = await api.post('/qr-token/generate');
       setQrToken(data);
       return data;
-    } catch (err) {
+    } catch {
       setQrError('Failed to generate QR token');
       return null;
     } finally {
@@ -34,10 +34,7 @@ export default function QRLinksPage() {
 
   const openWaitlistModal = async (link) => {
     setModal(link);
-    const result = await generateSignedQr();
-    if (result) {
-      link._signedUrl = result.bookingUrl;
-    }
+    await generateSignedQr();
   };
 
   const links = [
@@ -75,7 +72,7 @@ export default function QRLinksPage() {
   };
 
   const getModalUrl = () => {
-    if (modal?.signed && qrToken) return qrToken.bookingUrl;
+    if (modal?.signed && qrToken) return `${baseUrl}/join?${new URLSearchParams({ token: qrToken.token })}`;
     return modal?.url;
   };
 
@@ -107,8 +104,8 @@ export default function QRLinksPage() {
       {/* Modal */}
       <AnimatedModal isOpen={!!modal} onClose={() => { setModal(null); setQrToken(null); setQrError(null); }}>
         {modal && (
-          <div className="bg-white rounded-3xl w-full max-w-md p-8 shadow-elevated">
-            <button onClick={() => { setModal(null); setQrToken(null); setQrError(null); }} className="absolute top-4 right-4 w-8 h-8 rounded-xl bg-gray-50 hover:bg-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-600 transition-colors">
+          <div className="bg-white rounded-3xl w-[calc(100vw-2rem)] max-w-md p-5 sm:p-8 shadow-elevated">
+            <button onClick={() => { setModal(null); setQrToken(null); setQrError(null); }} aria-label="Close QR code" className="absolute top-4 right-4 w-8 h-8 rounded-xl bg-gray-50 hover:bg-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-600 transition-colors">
               <X size={16} />
             </button>
 
@@ -138,7 +135,7 @@ export default function QRLinksPage() {
                     data={getModalUrl() || modal.url}
                     level="H"
                     shapes={{ body: 'circle', eyeball: 'rounded', eyeframe: 'rounded' }}
-                    gradient={{ type: 'linear', rotate: 45, colors: ['#6366f1', '#8b5cf6'] }}
+                    gradient={{ type: 'linear', rotate: 45, colors: ['#167347', '#125c39'] }}
                     width={200}
                     height={200}
                   />
@@ -168,7 +165,7 @@ export default function QRLinksPage() {
               <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">
                 {modal.signed ? 'Signed URL' : 'Public URL'}
               </p>
-              <p className="text-[12px] text-gray-600 break-all font-mono leading-relaxed">
+              <p className="text-[12px] text-gray-600 break-all font-mono leading-relaxed max-h-24 overflow-y-auto">
                 {getModalUrl() || modal.url}
               </p>
             </div>
