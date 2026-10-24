@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import api from '../../../shared/services/api';
+import api, { getApiErrorMessage } from '../../../shared/services/api';
 
 const useAuthStore = create((set) => ({
   user: JSON.parse(localStorage.getItem('user') || 'null'),
@@ -9,17 +9,18 @@ const useAuthStore = create((set) => ({
 
   login: async (email, password) => {
     set({ loading: true, error: null });
-    // Clear any stale session before attempting login
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
     try {
+      // Clear any stale session before attempting login.
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      set({ user: null, token: null });
       const { data } = await api.post('/auth/login', { email, password });
       localStorage.setItem('token', data.token);
       localStorage.setItem('user', JSON.stringify(data.user));
       set({ user: data.user, token: data.token, loading: false });
       return true;
     } catch (err) {
-      set({ error: err.response?.data?.message || 'Login failed', loading: false });
+      set({ error: getApiErrorMessage(err, 'Email or password is incorrect.'), loading: false });
       return false;
     }
   },
@@ -33,7 +34,7 @@ const useAuthStore = create((set) => ({
       set({ user: data.user, token: data.token, loading: false });
       return true;
     } catch (err) {
-      set({ error: err.response?.data?.message || 'Signup failed', loading: false });
+      set({ error: getApiErrorMessage(err, 'Unable to create your account. Please try again.'), loading: false });
       return false;
     }
   },
@@ -47,7 +48,7 @@ const useAuthStore = create((set) => ({
       set({ user: data.user, token: data.token, loading: false });
       return true;
     } catch (err) {
-      set({ error: err.response?.data?.message || 'Signup failed', loading: false });
+      set({ error: getApiErrorMessage(err, 'Unable to create your account. Please try again.'), loading: false });
       return false;
     }
   },
@@ -63,7 +64,9 @@ const useAuthStore = create((set) => ({
     try {
       const { data } = await api.get('/auth/me');
       set({ user: data });
-    } catch {}
+    } catch {
+      // A failed profile refresh leaves the current session available for retry.
+    }
   },
 }));
 

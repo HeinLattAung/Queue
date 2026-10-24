@@ -3,6 +3,7 @@ import axios from 'axios';
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || '/api',
   withCredentials: true,
+  timeout: 30000,
 });
 
 api.interceptors.request.use((config) => {
@@ -34,3 +35,16 @@ api.interceptors.response.use(
 );
 
 export default api;
+
+export function getApiErrorMessage(error, fallback = 'Something went wrong. Please try again.') {
+  if (error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT') {
+    return 'The server is taking too long to respond. Please wait a moment and try again.';
+  }
+  if (!error.response) {
+    return 'Unable to connect to the server. Check your connection and try again.';
+  }
+  if (error.response.status >= 500) {
+    return 'The server is temporarily unavailable. Please try again shortly.';
+  }
+  return error.response.data?.message || fallback;
+}
