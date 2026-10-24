@@ -1,11 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import {
-  QrCode, CheckCircle2, XCircle, ShieldCheck, ShieldX, Users,
-  Clock, Loader2, RotateCcw, CameraOff, Camera, Ticket,
-  UserCheck, Ban, History, Sparkles, Zap, ScanLine,
-  CircleDot, Eye, Volume2, ChevronRight, Timer, Hash,
-} from 'lucide-react';
+import { QrCode, CheckCircle2, XCircle, ShieldCheck, ShieldX, Users, Clock, Loader2, RotateCcw, CameraOff, Camera, Ticket, UserCheck, Ban, History, CircleDot, Zap, ScanLine, Eye, Volume2, ChevronRight, Timer, Hash } from 'lucide-react';
 import { Html5Qrcode } from 'html5-qrcode';
 import gsap from 'gsap';
 import api from '../services/api';
@@ -536,7 +531,7 @@ export default function BookingScanPage() {
                                       animate={{ scale: 1 }}
                                       transition={{ delay: 0.3, type: 'spring' }}
                                     >
-                                      <Sparkles size={16} className="text-yellow-300" />
+                                      <CircleDot size={16} className="text-yellow-300" />
                                     </motion.div>
                                   </div>
                                   <p className="text-white/70 text-xs font-medium mt-0.5">QR code matched successfully</p>

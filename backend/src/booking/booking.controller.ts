@@ -1,3 +1,4 @@
+import { BusinessGuard } from '../common/guards/business.guard';
 import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards } from '@nestjs/common';
 import { BookingService } from './booking.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
@@ -14,16 +15,19 @@ export class BookingController {
   }
 
   @Get()
+  @UseGuards(BusinessGuard)
   findAll(@CurrentUser('businessId') businessId: string, @Query() query: any) {
     return this.bookingService.findAll(businessId, query);
   }
 
   @Get('today')
+  @UseGuards(BusinessGuard)
   getToday(@CurrentUser('businessId') businessId: string) {
     return this.bookingService.getTodayBookings(businessId);
   }
 
   @Get('range')
+  @UseGuards(BusinessGuard)
   getByRange(
     @CurrentUser('businessId') businessId: string,
     @Query('start') start: string,
@@ -33,22 +37,26 @@ export class BookingController {
   }
 
   @Post()
+  @UseGuards(BusinessGuard)
   create(@CurrentUser('businessId') businessId: string, @Body() data: any) {
     return this.bookingService.create(businessId, data);
   }
 
   @Put(':id/status')
-  updateStatus(@Param('id') id: string, @Body('status') status: string) {
-    return this.bookingService.updateStatus(id, status);
+  @UseGuards(BusinessGuard)
+  updateStatus(@CurrentUser('businessId') businessId: string, @Param('id') id: string, @Body('status') status: string) {
+    return this.bookingService.updateStatus(id, status, businessId);
   }
 
   @Put(':id')
-  update(@Param('id') id: string, @Body() data: any) {
-    return this.bookingService.update(id, data);
+  @UseGuards(BusinessGuard)
+  update(@CurrentUser('businessId') businessId: string, @Param('id') id: string, @Body() data: any) {
+    return this.bookingService.update(id, data, businessId);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.bookingService.remove(id);
+  @UseGuards(BusinessGuard)
+  remove(@CurrentUser('businessId') businessId: string, @Param('id') id: string) {
+    return this.bookingService.remove(id, businessId);
   }
 }

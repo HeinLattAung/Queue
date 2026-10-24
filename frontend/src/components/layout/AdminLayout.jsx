@@ -1,39 +1,52 @@
-import { useState } from 'react';
-import { Outlet, Navigate, useLocation } from 'react-router-dom';
-import { AnimatePresence } from 'motion/react';
-import { Menu } from 'lucide-react';
-import Sidebar from './Sidebar';
-import PageTransition from '../animation/PageTransition';
-import useAuthStore from '../../store/authStore';
-
+import { useState } from "react";
+import { Outlet, Navigate, useLocation, Link } from "react-router-dom";
+import { Menu, ChevronRight, ArrowUpRight } from "lucide-react";
+import Sidebar from "./Sidebar";
+import useAuthStore from "../../store/authStore";
+const names = {
+  dashboard: "Overview",
+  calendar: "Reservations",
+  customers: "Guests",
+  stats: "Reports",
+  settings: "Settings",
+  profile: "Your account",
+  "qr-links": "Guest links",
+  scan: "Scan a ticket",
+};
 export default function AdminLayout() {
   const { token } = useAuthStore();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   if (!token) return <Navigate to="/login" replace />;
-
   return (
-    <div className="min-h-screen bg-[#f8fafc] gradient-mesh">
+    <div className="workspace-shell">
+      <a href="#workspace-content" className="skip-content">
+        Skip to content
+      </a>
       <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-
-      {/* Mobile header */}
-      <div className="sticky top-0 z-30 lg:hidden bg-white/80 backdrop-blur-xl border-b border-gray-200/60 px-4 py-3 flex items-center gap-3">
-        <button
-          onClick={() => setSidebarOpen(true)}
-          className="w-10 h-10 rounded-xl border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-gray-50 transition-colors"
-        >
-          <Menu size={20} />
-        </button>
-        <span className="text-[15px] font-bold text-gray-900 tracking-tight">QueueAdmin</span>
+      <div className="workspace-main">
+        <header className="workspace-topbar">
+          <div className="workspace-breadcrumb">
+            <button
+              className="icon-button mobile-menu"
+              aria-label="Open navigation"
+              aria-expanded={sidebarOpen}
+              onClick={() => setSidebarOpen(true)}
+            >
+              <Menu size={20} />
+            </button>
+            <span>Workspace</span>
+            <ChevronRight size={13} />
+            <strong>{names[location.pathname.slice(1)] || "Overview"}</strong>
+          </div>
+          <Link to="/qr-links" className="topbar-link">
+            Guest links <ArrowUpRight size={14} />
+          </Link>
+        </header>
+        <main id="workspace-content" className="workspace-content">
+          <Outlet />
+        </main>
       </div>
-
-      <main className="ml-0 lg:ml-[260px] p-4 sm:p-6 lg:p-8">
-        <AnimatePresence mode="wait">
-          <PageTransition key={location.pathname}>
-            <Outlet />
-          </PageTransition>
-        </AnimatePresence>
-      </main>
     </div>
   );
 }

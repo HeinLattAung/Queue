@@ -17,6 +17,13 @@ export class BusinessService {
     return business;
   }
 
+  async getPublicBusiness(businessId: string) {
+    const business = await this.businessModel.findById(businessId)
+      .select('name location geoLocation geoFenceRadius logo description');
+    if (!business) throw new NotFoundException('Business not found');
+    return business;
+  }
+
   async updateBusiness(businessId: string, data: Partial<Business>) {
     return this.businessModel.findByIdAndUpdate(businessId, data, { new: true });
   }

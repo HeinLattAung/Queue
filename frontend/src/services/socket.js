@@ -1,7 +1,7 @@
 import { io } from 'socket.io-client';
 
 let socket = null;
-const activeRooms = new Set();
+const activeRooms = new Map();
 const reconnectCallbacks = new Set();
 
 function getSocket() {
@@ -22,15 +22,19 @@ function getSocket() {
       console.log('[socket] Connected:', socket.id);
 
       // Re-join rooms that were active before disconnect
-      for (const room of activeRooms) {
-        socket.emit('join', room);
-        console.log('[socket] Re-joined room:', room);
+      for (const [room, subscription] of activeRooms) {
+        subscribe(socket, room, subscription);
       }
 
       // Trigger all registered reconnect callbacks (REST state re-sync)
       for (const cb of reconnectCallbacks) {
         try { cb(); } catch (e) { console.error('[socket] Reconnect callback error:', e); }
       }
+    });
+
+    socket.on('subscription:expired', ({ room }) => {
+      const subscription = activeRooms.get(room);
+      subscription?.onResult?.({ ok: false, error: 'Subscription credential expired' });
     });
 
     socket.on('disconnect', (reason) => {
@@ -56,16 +60,29 @@ function getSocket() {
   return socket;
 }
 
-export function joinRoom(room) {
-  const s = getSocket();
-  activeRooms.add(room);
-  s.emit('join', room);
+function subscribe(connection, room, subscription) {
+  // Read the current account credential on every join/reconnect, never capture it at socket creation.
+  const token = room.startsWith('business:') ? localStorage.getItem('token') : subscription.token;
+  connection.timeout(10000).emit('join', { room, token }, (error, result) => {
+    if (activeRooms.get(room) !== subscription) {
+      // A page may unmount while server-side authorization is still pending.
+      if (!activeRooms.has(room) && result?.ok) connection.emit('leave', room);
+      return;
+    }
+    subscription.onResult?.(error ? { ok: false, error: 'Unable to join live updates' } : result);
+  });
+}
+
+export function joinRoom(room, token, onResult) {
+  const subscription = { token, onResult };
+  activeRooms.set(room, subscription);
+  const connection = getSocket();
+  if (connection.connected) subscribe(connection, room, subscription);
 }
 
 export function leaveRoom(room) {
-  const s = getSocket();
   activeRooms.delete(room);
-  s.emit('leave', room);
+  if (socket?.connected) socket.emit('leave', room);
 }
 
 export function onEvent(event, cb) {

@@ -126,15 +126,15 @@ export default function StatsPage() {
             <AreaChart data={weeklyData}>
               <defs>
                 <linearGradient id="colorCount" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#6366f1" stopOpacity={0.15} />
-                  <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+                  <stop offset="5%" stopColor="#167347" stopOpacity={0.15} />
+                  <stop offset="95%" stopColor="#167347" stopOpacity={0} />
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
               <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
               <Tooltip content={<CustomTooltip />} />
-              <Area type="monotone" dataKey="count" stroke="#6366f1" strokeWidth={2.5} fill="url(#colorCount)" dot={{ fill: '#6366f1', strokeWidth: 0, r: 4 }} activeDot={{ r: 6, fill: '#6366f1' }} />
+              <Area type="monotone" dataKey="count" stroke="#167347" strokeWidth={2.5} fill="url(#colorCount)" dot={{ fill: '#167347', strokeWidth: 0, r: 4 }} activeDot={{ r: 6, fill: '#167347' }} />
             </AreaChart>
           </ResponsiveContainer>
         </div>
@@ -154,7 +154,7 @@ export default function StatsPage() {
               <defs>
                 <linearGradient id="barGrad" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor="#8b5cf6" />
-                  <stop offset="100%" stopColor="#6366f1" />
+                  <stop offset="100%" stopColor="#167347" />
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />

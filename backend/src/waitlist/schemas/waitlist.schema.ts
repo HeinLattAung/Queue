@@ -69,9 +69,10 @@ WaitlistSchema.index(
   { businessId: 1, customerPhone: 1 },
   {
     unique: true,
+    name: 'unique_active_customer_phone',
     partialFilterExpression: {
       status: { $in: ['waiting', 'approved'] },
-      customerPhone: { $exists: true, $ne: '' },
+      customerPhone: { $gt: '' },
     },
   },
 );

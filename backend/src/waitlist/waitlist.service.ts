@@ -83,6 +83,7 @@ export class WaitlistService {
   }
 
   async create(businessId: string, data: any) {
+    await this.waitlistModel.init();
     const position = await this.getNextPosition(businessId);
     const entry = await this.waitlistModel.create({ ...data, businessId, position });
 
@@ -153,6 +154,9 @@ export class WaitlistService {
 
     // 5. Calculate next position
     const position = await this.getNextPosition(shopId);
+
+    // Ensure the uniqueness index exists before accepting queue entries.
+    await this.waitlistModel.init();
 
     // 6. Create entry (partial unique index prevents duplicates automatically)
     let entry;
@@ -474,6 +478,16 @@ export class WaitlistService {
     );
   }
 
+  async findStatusWithAccess(id: string, token: string) {
+    this.qrTokenService.assertResourceAccess(token, id, 'waitlist');
+    return this.findOne(id);
+  }
+
+  async getPositionWithAccess(id: string, token: string) {
+    this.qrTokenService.assertResourceAccess(token, id, 'waitlist');
+    return this.getPosition(id);
+  }
+
   async findByAccessToken(token: string) {
     const payload = this.qrTokenService.verifyToken(token);
     if (payload.type !== 'waitlist') {
@@ -489,7 +503,7 @@ export class WaitlistService {
       throw new UnauthorizedException('Access token is required to cancel your entry');
     }
     const payload = this.qrTokenService.verifyToken(token);
-    if (payload.sub !== id) {
+    if (payload.type !== 'waitlist' || payload.sub !== id) {
       throw new UnauthorizedException('Token does not match waitlist entry');
     }
     const entry = await this.waitlistModel.findByIdAndUpdate(id, { status: 'cancelled' }, { new: true });

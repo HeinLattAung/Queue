@@ -128,15 +128,15 @@ export default function CalendarPage() {
               {HOURS.map(hour => {
                 const hourBookings = getBookingsForHour(hour);
                 return (
-                  <div key={hour} className="flex px-6 py-3 gap-5 hover:bg-gray-50/30 transition-colors">
+                  <div key={hour} className="calendar-time-row flex px-6 py-3 gap-5 hover:bg-gray-50/30 transition-colors">
                     <div className="w-14 text-[13px] text-gray-300 font-semibold shrink-0 pt-1">{hour}</div>
-                    <div className="flex-1 min-h-[40px]">
+                    <div className="flex-1 min-w-0 min-h-[40px]">
                       {hourBookings.length === 0 ? (
                         <div className="h-10 border border-dashed border-gray-100 rounded-xl" />
                       ) : (
                         <div className="space-y-1.5">
                           {hourBookings.map(b => (
-                            <div key={b._id} className={`px-3.5 py-2.5 rounded-xl text-[12px] font-semibold flex items-center justify-between
+                            <div key={b._id} className={`calendar-booking-entry px-3.5 py-2.5 rounded-xl text-[12px] font-semibold flex items-center justify-between
                               ${b.status === 'serving'
                                 ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/60'
                                 : b.status === 'completed'

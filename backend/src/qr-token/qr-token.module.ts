@@ -1,3 +1,4 @@
+import { getJwtSecret } from '../common/config/security';
 import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { QrTokenService } from './qr-token.service';
@@ -8,7 +9,7 @@ import { BusinessModule } from '../business/business.module';
 @Module({
   imports: [
     JwtModule.register({
-      secret: process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-in-production',
+      secret: getJwtSecret(),
       signOptions: { expiresIn: '30d' },
     }),
     BusinessModule,

@@ -68,8 +68,8 @@ export class BookingService {
     return booking;
   }
 
-  async updateStatus(id: string, status: string) {
-    const booking = await this.bookingModel.findByIdAndUpdate(id, { status }, { new: true });
+  async updateStatus(id: string, status: string, businessId: string) {
+    const booking = await this.bookingModel.findOneAndUpdate({ _id: id, businessId }, { $set: { status } }, { new: true, runValidators: true });
     if (!booking) throw new NotFoundException('Booking not found');
 
     this.eventsGateway.emitToRoom(`booking:${id}`, 'booking:updated', booking);
@@ -78,12 +78,18 @@ export class BookingService {
     return booking;
   }
 
-  async update(id: string, data: any) {
-    return this.bookingModel.findByIdAndUpdate(id, data, { new: true });
+  async update(id: string, data: any, businessId: string) {
+    const fields = ['customerName', 'customerEmail', 'customerPhone', 'date', 'time', 'partySize', 'tableId', 'notes', 'bookingType', 'mealIds'];
+    const changes = Object.fromEntries(fields.filter(key => Object.prototype.hasOwnProperty.call(data, key)).map(key => [key, data[key]]));
+    const booking = await this.bookingModel.findOneAndUpdate({ _id: id, businessId }, { $set: changes }, { new: true, runValidators: true });
+    if (!booking) throw new NotFoundException('Booking not found');
+    return booking;
   }
 
-  async remove(id: string) {
-    return this.bookingModel.findByIdAndDelete(id);
+  async remove(id: string, businessId: string) {
+    const booking = await this.bookingModel.findOneAndDelete({ _id: id, businessId });
+    if (!booking) throw new NotFoundException('Booking not found');
+    return booking;
   }
 
   async getTodayBookings(businessId: string) {
@@ -98,6 +104,11 @@ export class BookingService {
     }).sort({ time: 1 }).populate('tableId');
   }
 
+  async findStatusWithAccess(id: string, token: string) {
+    this.qrTokenService.assertResourceAccess(token, id, 'booking');
+    return this.findOne(id);
+  }
+
   async findByAccessToken(token: string) {
     const payload = this.qrTokenService.verifyToken(token);
     if (payload.type !== 'booking') {
@@ -110,7 +121,7 @@ export class BookingService {
 
   async cancelByCustomer(id: string, token: string) {
     const payload = this.qrTokenService.verifyToken(token);
-    if (payload.sub !== id) {
+    if (payload.type !== 'booking' || payload.sub !== id) {
       throw new UnauthorizedException('Token does not match booking');
     }
     const booking = await this.bookingModel.findByIdAndUpdate(id, { status: 'cancelled' }, { new: true });
@@ -129,13 +140,13 @@ export class BookingService {
       throw new BadRequestException('Invalid QR ticket');
     }
 
-    const booking = await this.bookingModel.findById(id);
-    if (!booking) throw new NotFoundException('Booking not found');
-    if (booking.qrTicketUsed) throw new BadRequestException('QR ticket already used');
-
-    booking.status = 'arrived';
-    booking.qrTicketUsed = true;
-    await booking.save();
+    // A single conditional write prevents simultaneous scans from consuming a ticket twice.
+    const booking = await this.bookingModel.findOneAndUpdate(
+      { _id: id, qrTicketUsed: false, status: { $in: ['pending', 'confirmed'] } },
+      { $set: { status: 'arrived', qrTicketUsed: true } },
+      { new: true, runValidators: true },
+    );
+    if (!booking) throw new BadRequestException('QR ticket already used or booking is not awaiting arrival');
 
     this.eventsGateway.emitToRoom(`booking:${id}`, 'booking:updated', booking);
     this.eventsGateway.emitToRoom(`business:${booking.businessId}`, 'booking:updated', booking);

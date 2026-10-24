@@ -1,3 +1,4 @@
+import { getJwtSecret } from '../common/config/security';
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { JwtModule } from '@nestjs/jwt';
@@ -16,7 +17,7 @@ import { Business, BusinessSchema } from '../business/schemas/business.schema';
     ]),
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.register({
-      secret: process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-in-production',
+      secret: getJwtSecret(),
       signOptions: { expiresIn: process.env.JWT_EXPIRATION || '7d' },
     }),
   ],

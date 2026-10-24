@@ -32,9 +32,9 @@ const useCustomerWaitlistStore = create((set, get) => ({
     }
   },
 
-  fetchPosition: async (id) => {
+  fetchPosition: async (id, token = get().entry?.accessToken) => {
     try {
-      const res = await api.get(`/public/waitlist/position/${id}`);
+      const res = await api.get(`/public/waitlist/position/${id}`, { headers: { 'X-Access-Token': token } });
       set({ position: res.data });
       return res.data;
     } catch (err) {

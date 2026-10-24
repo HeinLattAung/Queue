@@ -1,3 +1,5 @@
+import { RoomAccessService } from './room-access.service';
+import { checkOrigin } from '../common/config/security';
 import {
   WebSocketGateway,
   WebSocketServer,
@@ -11,13 +13,15 @@ import { Server, Socket } from 'socket.io';
 
 @WebSocketGateway({
   cors: {
-    origin: process.env.CORS_ORIGIN
-      ? process.env.CORS_ORIGIN.split(',').map((o) => o.trim())
-      : ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175', 'http://localhost:5176'],
+    origin: checkOrigin,
     credentials: true,
   },
 })
 export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
+  constructor(private roomAccess: RoomAccessService) {}
+
+  private expirations = new Map<string, Map<string, ReturnType<typeof setTimeout>>>();
+
   @WebSocketServer()
   server: Server;
 
@@ -26,25 +30,61 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   handleDisconnect(client: Socket) {
-    console.log(`Client disconnected: ${client.id}`);
+    for (const timer of this.expirations.get(client.id)?.values() || []) clearTimeout(timer);
+    this.expirations.delete(client.id);
   }
 
   @SubscribeMessage('join')
-  handleJoin(@ConnectedSocket() client: Socket, @MessageBody() room: string) {
-    client.join(room);
-    console.log(`Client ${client.id} joined room: ${room}`);
+  async handleJoin(@ConnectedSocket() client: Socket, @MessageBody() request: { room?: string; token?: string }) {
+    const room = request?.room;
+    try {
+      const expiresAt = await this.roomAccess.authorize(room, request?.token);
+      if (!client.connected) return { ok: false, error: 'Connection closed' };
+      // Reserve a timer map only after validation, and bound subscriptions per connection.
+      const timers = this.expirations.get(client.id) || new Map();
+      if (!client.rooms.has(room) && client.rooms.size >= 33) return { ok: false, error: 'Too many subscriptions' };
+      if (expiresAt !== null && expiresAt <= Date.now()) return { ok: false, error: 'Subscription credential expired' };
+      this.expirations.set(client.id, timers);
+      await client.join(room);
+      if (!client.connected) return { ok: false, error: 'Connection closed' };
+      clearTimeout(timers.get(room));
+      if (expiresAt !== null) {
+        // Node timers are limited to 2^31-1 ms; long-lived tokens are checked again at each interval.
+        const expire = () => {
+          const remaining = expiresAt - Date.now();
+          if (remaining > 0) {
+            timers.set(room, setTimeout(expire, Math.min(remaining, 2147483647)));
+            return;
+          }
+          client.leave(room);
+          timers.delete(room);
+          client.emit('subscription:expired', { room });
+        };
+        timers.set(room, setTimeout(expire, Math.min(expiresAt - Date.now(), 2147483647)));
+      }
+      this.expirations.set(client.id, timers);
+      return { ok: true, room };
+    } catch {
+      return { ok: false, error: 'Subscription not permitted' };
+    }
   }
 
   @SubscribeMessage('leave')
   handleLeave(@ConnectedSocket() client: Socket, @MessageBody() room: string) {
+    if (typeof room !== 'string' || !/^(business|booking|queue|waitlist|availability):[a-f0-9]{24}$/i.test(room)) return;
+    clearTimeout(this.expirations.get(client.id)?.get(room));
+    this.expirations.get(client.id)?.delete(room);
     client.leave(room);
-    console.log(`Client ${client.id} left room: ${room}`);
   }
 
   // ── Generic emitters (kept for non-queue modules like booking) ──
 
   emitToRoom(room: string, event: string, data: any) {
     this.server.to(room).emit(event, data);
+    if (event === 'availability:changed' && room.startsWith('business:')) {
+      const businessId = room.slice('business:'.length);
+      this.server.to(`availability:${businessId}`).emit(event, { businessId });
+    }
   }
 
   emitToAll(event: string, data: any) {

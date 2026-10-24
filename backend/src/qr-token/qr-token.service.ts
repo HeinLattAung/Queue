@@ -27,6 +27,16 @@ export class QrTokenService {
     }
   }
 
+  assertResourceAccess(token: string, id: string, type: 'booking' | 'waitlist') {
+    if (typeof token !== 'string' || !token || !/^[a-f0-9]{24}$/i.test(id)) {
+      throw new UnauthorizedException('Resource access token required');
+    }
+    const payload = this.verifyToken(token);
+    if (payload.type !== type || payload.sub !== id) {
+      throw new UnauthorizedException('Token does not match resource');
+    }
+  }
+
   /**
    * Generate a QR entry token signed with the shop's own secret.
    * Payload contains shopId so we can look up the secret during validation.

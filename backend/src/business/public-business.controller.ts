@@ -11,7 +11,7 @@ export class PublicBusinessController {
 
   @Get(':id')
   getBusiness(@Param('id') id: string) {
-    return this.businessService.getBusiness(id);
+    return this.businessService.getPublicBusiness(id);
   }
 
   @Get(':id/hours')

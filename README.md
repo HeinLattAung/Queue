@@ -80,7 +80,7 @@ In a second terminal, starting from the repository root:
 
 ```bash
 cd frontend
-npm ci
+npm ci --legacy-peer-deps
 npm run dev
 ```
 
@@ -101,7 +101,7 @@ Run from `backend/`:
 npm run build
 ```
 
-Neither package currently defines an automated test script. These commands describe available checks; they do not represent published passing results or test coverage.
+Run `npm test` inside backend/ for the security, access, and MongoDB regression suites. See QA-REPORT.md for local results and known lint limitations; SECURITY-CHANGES.md covers deployment requirements.
 
 ## Repository structure
 
@@ -128,11 +128,11 @@ Queue/
 
 - The service worker caches selected successful static responses. It does not implement offline booking writes, an IndexedDB sync queue, or guaranteed offline navigation.
 - Socket reconnection does not establish conflict-free synchronization for offline mutations.
-- Automated tests, measured performance results, and concurrent booking guarantees are not documented here as completed work.
-- Before production use, review authorization for REST resources and Socket.IO room membership. The current gateway accepts client-supplied room names without a membership check.
-- The REST CORS callback currently permits unrecognized origins even when `CORS_ORIGIN` is configured; enforce the intended allowlist before production deployment.
+- Regression tests cover access control, queue uniqueness, and concurrent QR consumption. Concurrent booking availability and measured production performance still require further validation.
+- Booking management and private Socket.IO rooms enforce authorization. Other legacy management modules still require an ownership review.
+- Production requires a persistent MongoDB URI, a strong JWT secret of at least 32 characters, and an explicit CORS origin allowlist. Deploy the updated frontend and backend together.
 
-Suggested next work: add tests for booking and queue transitions, verify concurrent requests, and validate the main customer and admin flows end to end.
+See SECURITY-CHANGES.md and QA-REPORT.md for remaining work, migration precautions, and verified customer/admin flows.
 
 ## Author
 

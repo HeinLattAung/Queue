@@ -1,35 +1,28 @@
-import { useEffect, useRef, useState } from 'react';
-import { joinRoom, leaveRoom, onEvent, offEvent, isConnected } from '../services/socket';
+import { useEffect, useState } from 'react';
+import { joinRoom, leaveRoom, onEvent, offEvent } from '../services/socket';
 import getSocket from '../services/socket';
 
-export default function useSocket(room) {
+export default function useSocket(room, accessToken) {
   const [connected, setConnected] = useState(false);
-  const roomRef = useRef(room);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    roomRef.current = room;
     if (!room) return;
-
+    let active = true;
     const socket = getSocket();
-
-    const onConnect = () => setConnected(true);
-    const onDisconnect = () => setConnected(false);
-
-    socket.on('connect', onConnect);
+    const onDisconnect = () => { if (active) setConnected(false); };
     socket.on('disconnect', onDisconnect);
-
-    if (socket.connected) {
-      setConnected(true);
-    }
-
-    joinRoom(room);
-
+    joinRoom(room, accessToken, (result) => {
+      if (!active) return;
+      setConnected(Boolean(result?.ok));
+      setError(result?.ok ? null : result?.error || 'Live updates unavailable');
+    });
     return () => {
+      active = false;
       leaveRoom(room);
-      socket.off('connect', onConnect);
       socket.off('disconnect', onDisconnect);
     };
-  }, [room]);
+  }, [room, accessToken]);
 
-  return { on: onEvent, off: offEvent, connected };
+  return { on: onEvent, off: offEvent, connected: Boolean(room) && connected, error };
 }

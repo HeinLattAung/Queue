@@ -1,3 +1,4 @@
+import { checkOrigin } from './common/config/security';
 import 'dotenv/config';
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
@@ -10,23 +11,11 @@ async function bootstrap() {
 
   app.setGlobalPrefix('api');
 
-  const allowedOrigins = process.env.CORS_ORIGIN
-    ? process.env.CORS_ORIGIN.split(',').map((o) => o.trim())
-    : ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175', 'http://localhost:5176'];
-
   app.enableCors({
-    origin: (origin, callback) => {
-      // Allow requests with no origin (mobile apps, curl, etc.)
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        console.log(`CORS blocked origin: ${origin}`);
-        callback(null, true); // Allow all for now, log unknown origins
-      }
-    },
+    origin: checkOrigin,
     credentials: true,
     methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With', 'X-Access-Token'],
     exposedHeaders: ['Content-Range', 'X-Content-Range'],
   });
   app.useGlobalPipes(
@@ -39,7 +28,7 @@ async function bootstrap() {
   console.log(`Server running on http://localhost:${port}`);
 
   // Auto-seed test data when using in-memory DB
-  if (!process.env.MONGODB_URI) {
+  if (process.env.NODE_ENV !== 'production' && !process.env.MONGODB_URI) {
     await autoSeed(port);
   }
 }

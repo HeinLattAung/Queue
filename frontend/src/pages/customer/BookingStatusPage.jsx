@@ -29,7 +29,7 @@ export default function BookingStatusPage() {
   const [showQr, setShowQr] = useState(false);
   const glowRef = useRef(null);
 
-  const { on, off } = useSocket(booking ? `booking:${booking._id}` : null);
+  const { on, off } = useSocket(booking ? `booking:${booking._id}` : null, token);
 
   useEffect(() => {
     const handler = (data) => setBooking(data);

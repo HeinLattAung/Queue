@@ -20,6 +20,9 @@ import { AvailabilityModule } from './availability/availability.module';
         if (process.env.MONGODB_URI) {
           return { uri: process.env.MONGODB_URI };
         }
+        if (process.env.NODE_ENV === 'production') {
+          throw new Error('MONGODB_URI is required in production');
+        }
         // In-memory MongoDB for local development only
         const { MongoMemoryServer } = await import('mongodb-memory-server');
         const mongod = await MongoMemoryServer.create();

@@ -30,7 +30,7 @@ export default function BookingPage() {
   const [copied, setCopied] = useState(false);
   const successRef = useRef(null);
 
-  const { on, off } = useSocket(businessId ? `business:${businessId}` : null);
+  const { on, off } = useSocket(businessId ? `availability:${businessId}` : null);
 
   // Listen for availability changes
   useEffect(() => {

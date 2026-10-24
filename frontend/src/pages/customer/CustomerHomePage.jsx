@@ -2,11 +2,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { gsap } from 'gsap';
-import {
-  LogOut, CameraOff, QrCode, Clock, Sparkles, ChevronRight,
-  CheckCircle, Users, UtensilsCrossed, X, Loader2, AlertTriangle,
-  MapPin,
-} from 'lucide-react';
+import { LogOut, CameraOff, QrCode, Clock, CircleDot, ChevronRight, CheckCircle, Users, UtensilsCrossed, X, Loader2, AlertTriangle, MapPin } from 'lucide-react';
 import { Html5Qrcode } from 'html5-qrcode';
 import useAuthStore from '../../store/authStore';
 import api from '../../services/api';
@@ -667,7 +663,7 @@ export default function CustomerHomePage() {
                             transition={{ type: 'spring', stiffness: 300, damping: 18 }}
                             className="w-20 h-20 rounded-full bg-gradient-to-br from-emerald-500/20 to-teal-500/10 border border-emerald-500/30 flex items-center justify-center mb-5 shadow-lg shadow-emerald-500/15"
                           >
-                            <Sparkles size={36} className="text-emerald-400" />
+                            <CircleDot size={36} className="text-emerald-400" />
                           </motion.div>
                           <motion.h3
                             initial={{ opacity: 0, y: 8 }}

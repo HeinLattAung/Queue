@@ -1,22 +1,31 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'motion/react';
-import { gsap } from 'gsap';
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useSearchParams, useNavigate } from "react-router-dom";
+import { motion, AnimatePresence } from "motion/react";
+import { gsap } from "gsap";
 import {
-  ArrowLeft, ShoppingCart, Plus, Minus, ChevronRight, Loader2,
-  CheckCircle, X, Coffee, AlertTriangle, PartyPopper,
-} from 'lucide-react';
-import api from '../../services/api';
-import useOrderStore from '../../store/orderStore';
-import { joinRoom, leaveRoom, onEvent, offEvent } from '../../services/socket';
+  ArrowLeft,
+  ShoppingCart,
+  Plus,
+  Minus,
+  ChevronRight,
+  Loader2,
+  CheckCircle,
+  X,
+  Coffee,
+  AlertTriangle,
+  PartyPopper,
+} from "lucide-react";
+import api from "../../services/api";
+import useOrderStore from "../../store/orderStore";
+import { joinRoom, leaveRoom, onEvent, offEvent } from "../../services/socket";
 
 // ─── PHASE STATE MACHINE ───
 // loading → menu → submitting → tracking → completed
 
 const STATUS_STEPS = [
-  { key: 'received', label: 'Received', statuses: ['pending', 'confirmed'] },
-  { key: 'preparing', label: 'Preparing', statuses: ['arrived', 'serving'] },
-  { key: 'ready', label: 'Ready', statuses: ['completed'] },
+  { key: "received", label: "Received", statuses: ["pending", "confirmed"] },
+  { key: "preparing", label: "Preparing", statuses: ["arrived", "serving"] },
+  { key: "ready", label: "Ready", statuses: ["completed"] },
 ];
 
 function getStepIndex(status) {
@@ -27,10 +36,10 @@ function getStepIndex(status) {
 export default function OrderPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const businessId = searchParams.get('businessId');
+  const businessId = searchParams.get("businessId");
 
   // Phase
-  const [phase, setPhase] = useState('loading');
+  const [phase, setPhase] = useState("loading");
   const [business, setBusiness] = useState(null);
   const [meals, setMeals] = useState([]);
   const [error, setError] = useState(null);
@@ -45,7 +54,8 @@ export default function OrderPage() {
 
   const cartItems = useMemo(() => Object.values(cart), [cart]);
   const cartTotal = useMemo(
-    () => cartItems.reduce((s, { meal, quantity }) => s + meal.price * quantity, 0),
+    () =>
+      cartItems.reduce((s, { meal, quantity }) => s + meal.price * quantity, 0),
     [cartItems],
   );
   const cartCount = useMemo(
@@ -54,7 +64,7 @@ export default function OrderPage() {
   );
 
   // Category filter
-  const [activeCategory, setActiveCategory] = useState('All');
+  const [activeCategory, setActiveCategory] = useState("All");
   const [cartSheetOpen, setCartSheetOpen] = useState(false);
 
   // Tracking
@@ -70,7 +80,7 @@ export default function OrderPage() {
   // ─── DATA LOADING ───
   useEffect(() => {
     if (!businessId) {
-      setError('Missing business ID');
+      setError("Missing business ID");
       return;
     }
 
@@ -81,10 +91,10 @@ export default function OrderPage() {
       .then(([bizRes, mealsRes]) => {
         setBusiness(bizRes.data);
         setMeals(mealsRes.data.filter((m) => m.available !== false));
-        setPhase('menu');
+        setPhase("menu");
       })
       .catch(() => {
-        setError('Failed to load menu. Please try again.');
+        setError("Failed to load menu. Please try again.");
       });
 
     // Reset cart on mount
@@ -95,16 +105,16 @@ export default function OrderPage() {
   // ─── GSAP AMBIENT BLOBS ───
   useEffect(() => {
     if (!blobsRef.current) return;
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     const blobs = blobsRef.current.children;
     Array.from(blobs).forEach((blob, i) => {
       gsap.to(blob, {
-        x: 'random(-40, 40)',
-        y: 'random(-40, 40)',
-        duration: 'random(6, 10)',
+        x: "random(-40, 40)",
+        y: "random(-40, 40)",
+        duration: "random(6, 10)",
         repeat: -1,
         yoyo: true,
-        ease: 'sine.inOut',
+        ease: "sine.inOut",
         delay: i * 0.7,
       });
     });
@@ -112,15 +122,15 @@ export default function OrderPage() {
 
   // ─── GSAP PROGRESS GLOW ───
   useEffect(() => {
-    if (phase !== 'tracking' || !progressRef.current) return;
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    const dots = progressRef.current.querySelectorAll('.progress-dot-active');
+    if (phase !== "tracking" || !progressRef.current) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const dots = progressRef.current.querySelectorAll(".progress-dot-active");
     gsap.to(dots, {
-      boxShadow: '0 0 20px rgba(249, 115, 22, 0.8)',
+      boxShadow: "0 0 20px rgba(249, 115, 22, 0.8)",
       duration: 1.5,
       repeat: -1,
       yoyo: true,
-      ease: 'sine.inOut',
+      ease: "sine.inOut",
       stagger: 0.2,
     });
   }, [phase, trackingStatus]);
@@ -130,41 +140,43 @@ export default function OrderPage() {
     if (!order?._id) return;
 
     const room = `booking:${order._id}`;
-    joinRoom(room);
+    joinRoom(room, order.accessToken);
 
     const handleUpdate = (data) => {
       if (data._id === order._id || data.bookingId === order._id) {
         const newStatus = data.status;
         setTrackingStatus(newStatus);
-        if (newStatus === 'completed' && !celebrated) {
+        if (newStatus === "completed" && !celebrated) {
           setCelebrated(true);
           if (navigator.vibrate) navigator.vibrate([100, 50, 100, 50, 200]);
-          setPhase('completed');
+          setPhase("completed");
         }
       }
     };
 
-    onEvent('booking:updated', handleUpdate);
+    onEvent("booking:updated", handleUpdate);
 
     return () => {
-      offEvent('booking:updated', handleUpdate);
+      offEvent("booking:updated", handleUpdate);
       leaveRoom(room);
     };
-  }, [order?._id, celebrated]);
+  }, [order?._id, order?.accessToken, celebrated]);
 
   // ─── POLLING FALLBACK ───
   useEffect(() => {
-    if (!order?._id || phase === 'completed') return;
+    if (!order?._id || phase === "completed") return;
 
     const poll = setInterval(async () => {
       try {
-        const { data } = await api.get(`/public/bookings/${order._id}/status`);
+        const { data } = await api.get(`/public/bookings/${order._id}/status`, {
+          headers: { "X-Access-Token": order.accessToken },
+        });
         const newStatus = data.status;
         setTrackingStatus(newStatus);
-        if (newStatus === 'completed' && !celebrated) {
+        if (newStatus === "completed" && !celebrated) {
           setCelebrated(true);
           if (navigator.vibrate) navigator.vibrate([100, 50, 100, 50, 200]);
-          setPhase('completed');
+          setPhase("completed");
         }
       } catch {
         // ignore
@@ -172,35 +184,42 @@ export default function OrderPage() {
     }, 5000);
 
     return () => clearInterval(poll);
-  }, [order?._id, phase, celebrated]);
+  }, [order?._id, order?.accessToken, phase, celebrated]);
 
   // ─── CELEBRATION ANIMATION ───
   useEffect(() => {
-    if (phase !== 'completed' || !celebrationRef.current) return;
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    const els = celebrationRef.current.querySelectorAll('[data-celebrate]');
+    if (phase !== "completed" || !celebrationRef.current) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const els = celebrationRef.current.querySelectorAll("[data-celebrate]");
     gsap.fromTo(
       els,
       { opacity: 0, y: 30, scale: 0.9 },
-      { opacity: 1, y: 0, scale: 1, duration: 0.6, stagger: 0.1, ease: 'back.out(1.7)' },
+      {
+        opacity: 1,
+        y: 0,
+        scale: 1,
+        duration: 0.6,
+        stagger: 0.1,
+        ease: "back.out(1.7)",
+      },
     );
   }, [phase]);
 
   // ─── CATEGORIES ───
   const categories = useMemo(() => {
     const cats = [...new Set(meals.map((m) => m.category).filter(Boolean))];
-    return ['All', ...cats];
+    return ["All", ...cats];
   }, [meals]);
 
   const filteredMeals = useMemo(() => {
-    if (activeCategory === 'All') return meals;
+    if (activeCategory === "All") return meals;
     return meals.filter((m) => m.category === activeCategory);
   }, [meals, activeCategory]);
 
   // ─── PLACE ORDER ───
   const handlePlaceOrder = useCallback(async () => {
     if (cartCount === 0) return;
-    setPhase('submitting');
+    setPhase("submitting");
     if (navigator.vibrate) navigator.vibrate([80, 40, 80, 40, 120]);
 
     try {
@@ -212,41 +231,32 @@ export default function OrderPage() {
 
       const payload = {
         businessId,
-        bookingType: 'meal',
-        customerName: 'Walk-in Order',
-        customerPhone: '',
-        customerEmail: '',
+        bookingType: "meal",
+        customerName: "Walk-in Order",
+        customerPhone: "",
+        customerEmail: "",
         date: now.toISOString(),
-        time: now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }),
+        time: now.toLocaleTimeString("en-US", {
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: false,
+        }),
         partySize: 1,
         mealIds,
       };
 
-      const { data } = await api.post('/public/bookings', payload);
+      const { data } = await api.post("/public/bookings", payload);
       setOrder(data);
-      setTrackingStatus(data.status || 'pending');
-      setPhase('tracking');
+      setTrackingStatus(data.status || "pending");
+      setPhase("tracking");
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to place order. Please try again.');
-      setPhase('menu');
+      setError(
+        err.response?.data?.message ||
+          "Failed to place order. Please try again.",
+      );
+      setPhase("menu");
     }
   }, [cartCount, cartItems, businessId, setOrder]);
-
-  // ─── GRADIENT GENERATORS FOR CARDS ───
-  const cardGradients = useMemo(() => {
-    const gradients = [
-      'from-orange-600/30 to-amber-700/10',
-      'from-rose-600/25 to-pink-700/10',
-      'from-violet-600/25 to-purple-700/10',
-      'from-emerald-600/25 to-teal-700/10',
-      'from-blue-600/25 to-cyan-700/10',
-      'from-amber-600/30 to-yellow-700/10',
-    ];
-    return meals.reduce((acc, m, i) => {
-      acc[m._id] = gradients[i % gradients.length];
-      return acc;
-    }, {});
-  }, [meals]);
 
   // ─── RENDER ───
   return (
@@ -261,7 +271,7 @@ export default function OrderPage() {
       <div className="relative z-10 max-w-lg sm:max-w-2xl mx-auto min-h-screen flex flex-col">
         <AnimatePresence mode="wait">
           {/* ═══════════ LOADING ═══════════ */}
-          {(phase === 'loading' || error) && (
+          {(phase === "loading" || error) && (
             <motion.div
               key="loading"
               initial={{ opacity: 0 }}
@@ -274,7 +284,9 @@ export default function OrderPage() {
                   <div className="w-16 h-16 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center mb-4">
                     <AlertTriangle size={28} className="text-red-400" />
                   </div>
-                  <p className="text-white/70 text-sm font-medium mb-4">{error}</p>
+                  <p className="text-white/70 text-sm font-medium mb-4">
+                    {error}
+                  </p>
                   <button
                     onClick={() => window.location.reload()}
                     className="px-6 py-3 bg-white/[0.06] border border-white/[0.08] rounded-xl text-white/60 text-sm font-medium hover:bg-white/[0.1] transition-all"
@@ -285,14 +297,16 @@ export default function OrderPage() {
               ) : (
                 <div className="flex flex-col items-center">
                   <div className="w-14 h-14 border-[3px] border-orange-500/20 border-t-orange-500 rounded-full animate-spin mb-5" />
-                  <p className="text-white/40 text-sm font-medium">Loading menu...</p>
+                  <p className="text-white/40 text-sm font-medium">
+                    Loading menu...
+                  </p>
                 </div>
               )}
             </motion.div>
           )}
 
           {/* ═══════════ MENU PHASE ═══════════ */}
-          {phase === 'menu' && !error && (
+          {phase === "menu" && !error && (
             <motion.div
               key="menu"
               initial={{ opacity: 0 }}
@@ -310,16 +324,18 @@ export default function OrderPage() {
                 <div className="flex items-center justify-between py-2">
                   <button
                     onClick={() => navigate(-1)}
+                    aria-label="Go back"
                     className="w-10 h-10 rounded-xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center text-white/50 hover:bg-white/[0.08] transition-all"
                   >
                     <ArrowLeft size={18} />
                   </button>
                   <h1 className="text-white font-bold text-[17px] tracking-tight truncate max-w-[200px]">
-                    {business?.name || 'Menu'}
+                    {business?.name || "Menu"}
                   </h1>
                   <div className="relative">
                     <button
                       onClick={() => cartCount > 0 && setCartSheetOpen(true)}
+                      aria-label="Open your order"
                       className="w-10 h-10 rounded-xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center text-white/50 hover:bg-white/[0.08] transition-all"
                     >
                       <ShoppingCart size={18} />
@@ -347,10 +363,11 @@ export default function OrderPage() {
                     <button
                       key={cat}
                       onClick={() => setActiveCategory(cat)}
+                      aria-pressed={activeCategory === cat}
                       className={`shrink-0 px-4 py-2 rounded-full text-xs font-semibold transition-all whitespace-nowrap ${
                         activeCategory === cat
-                          ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/30'
-                          : 'bg-white/[0.05] text-white/40 border border-white/[0.06] hover:bg-white/[0.08]'
+                          ? "bg-orange-500 text-white shadow-lg shadow-orange-500/30"
+                          : "bg-white/[0.05] text-white/40 border border-white/[0.06] hover:bg-white/[0.08]"
                       }`}
                     >
                       {cat}
@@ -361,7 +378,7 @@ export default function OrderPage() {
 
               {/* Meal grid */}
               <div className="flex-1 px-4 py-4 pb-32">
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <div className="menu-item-grid">
                   {filteredMeals.map((meal, i) => {
                     const qty = cart[meal._id]?.quantity || 0;
                     return (
@@ -370,21 +387,16 @@ export default function OrderPage() {
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: i * 0.05, duration: 0.35 }}
-                        className="bg-white/[0.04] backdrop-blur-2xl border border-white/[0.08] rounded-2xl overflow-hidden group hover:border-white/[0.12] transition-all"
+                        className="menu-item-card"
                       >
-                        {/* Gradient placeholder */}
-                        <div
-                          className={`h-24 bg-gradient-to-br ${cardGradients[meal._id]} flex items-center justify-center`}
-                        >
-                          <Coffee size={28} className="text-white/20" />
+                        <div className="menu-category">
+                          {meal.category || "From the kitchen"}
                         </div>
 
-                        <div className="p-3">
-                          <h3 className="text-white/90 font-semibold text-[13px] leading-tight truncate">
-                            {meal.name}
-                          </h3>
+                        <div className="menu-item-body">
+                          <h3 className="menu-item-name">{meal.name}</h3>
                           {meal.description && (
-                            <p className="text-white/30 text-[11px] mt-0.5 line-clamp-1">
+                            <p className="menu-item-description">
                               {meal.description}
                             </p>
                           )}
@@ -397,6 +409,7 @@ export default function OrderPage() {
                               <motion.button
                                 whileTap={{ scale: 0.85 }}
                                 onClick={() => addItem(meal)}
+                                aria-label={`Add ${meal.name}`}
                                 className="w-8 h-8 rounded-xl bg-orange-500 flex items-center justify-center text-white shadow-lg shadow-orange-500/30 hover:bg-orange-400 transition-colors"
                               >
                                 <Plus size={16} strokeWidth={3} />
@@ -406,6 +419,7 @@ export default function OrderPage() {
                                 <motion.button
                                   whileTap={{ scale: 0.85 }}
                                   onClick={() => removeItem(meal._id)}
+                                  aria-label={`Remove one ${meal.name}`}
                                   className="w-7 h-7 rounded-lg bg-white/[0.08] border border-white/[0.1] flex items-center justify-center text-white/60"
                                 >
                                   <Minus size={12} strokeWidth={3} />
@@ -416,6 +430,7 @@ export default function OrderPage() {
                                 <motion.button
                                   whileTap={{ scale: 0.85 }}
                                   onClick={() => addItem(meal)}
+                                  aria-label={`Add ${meal.name}`}
                                   className="w-7 h-7 rounded-lg bg-orange-500 flex items-center justify-center text-white shadow-md shadow-orange-500/30"
                                 >
                                   <Plus size={12} strokeWidth={3} />
@@ -432,7 +447,9 @@ export default function OrderPage() {
                 {filteredMeals.length === 0 && (
                   <div className="flex flex-col items-center justify-center py-16 text-center">
                     <Coffee size={40} className="text-white/10 mb-3" />
-                    <p className="text-white/30 text-sm">No items in this category</p>
+                    <p className="text-white/30 text-sm">
+                      No items in this category
+                    </p>
                   </div>
                 )}
               </div>
@@ -444,7 +461,7 @@ export default function OrderPage() {
                     initial={{ y: 100, opacity: 0 }}
                     animate={{ y: 0, opacity: 1 }}
                     exit={{ y: 100, opacity: 0 }}
-                    transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                    transition={{ type: "spring", stiffness: 300, damping: 30 }}
                     className="fixed bottom-0 left-0 right-0 z-40 px-4 pb-[env(safe-area-inset-bottom,16px)] pt-2 max-w-lg mx-auto"
                   >
                     <motion.button
@@ -457,7 +474,7 @@ export default function OrderPage() {
                           <ShoppingCart size={16} className="text-white" />
                         </div>
                         <span className="text-white font-bold text-sm">
-                          {cartCount} {cartCount === 1 ? 'item' : 'items'}
+                          {cartCount} {cartCount === 1 ? "item" : "items"}
                         </span>
                       </div>
                       <div className="flex items-center gap-2">
@@ -483,10 +500,14 @@ export default function OrderPage() {
                       className="fixed inset-0 z-50 bg-black/60 backdrop-blur-[2px]"
                     />
                     <motion.div
-                      initial={{ y: '100%' }}
+                      initial={{ y: "100%" }}
                       animate={{ y: 0 }}
-                      exit={{ y: '100%' }}
-                      transition={{ type: 'spring', stiffness: 300, damping: 34 }}
+                      exit={{ y: "100%" }}
+                      transition={{
+                        type: "spring",
+                        stiffness: 300,
+                        damping: 34,
+                      }}
                       className="fixed bottom-0 left-0 right-0 z-50 max-w-lg mx-auto"
                     >
                       <div className="bg-[#111118]/95 backdrop-blur-2xl border-t border-x border-white/[0.08] rounded-t-[28px] shadow-[0_-10px_60px_rgba(0,0,0,0.5)] max-h-[70vh] flex flex-col">
@@ -496,7 +517,9 @@ export default function OrderPage() {
                             <div className="w-10 h-1 rounded-full bg-white/[0.15]" />
                           </div>
                           <div className="flex items-center justify-between">
-                            <h2 className="text-white font-bold text-lg">Your Order</h2>
+                            <h2 className="text-white font-bold text-lg">
+                              Your Order
+                            </h2>
                             <button
                               onClick={() => setCartSheetOpen(false)}
                               className="w-8 h-8 rounded-xl bg-white/[0.06] flex items-center justify-center text-white/40 hover:bg-white/[0.1] transition-all"
@@ -525,6 +548,7 @@ export default function OrderPage() {
                                 <motion.button
                                   whileTap={{ scale: 0.85 }}
                                   onClick={() => removeItem(meal._id)}
+                                  aria-label={`Remove one ${meal.name}`}
                                   className="w-8 h-8 rounded-xl bg-white/[0.06] border border-white/[0.08] flex items-center justify-center text-white/50"
                                 >
                                   <Minus size={14} />
@@ -535,6 +559,7 @@ export default function OrderPage() {
                                 <motion.button
                                   whileTap={{ scale: 0.85 }}
                                   onClick={() => addItem(meal)}
+                                  aria-label={`Add ${meal.name}`}
                                   className="w-8 h-8 rounded-xl bg-orange-500/20 border border-orange-500/30 flex items-center justify-center text-orange-400"
                                 >
                                   <Plus size={14} />
@@ -547,7 +572,9 @@ export default function OrderPage() {
                         {/* Footer */}
                         <div className="px-6 pb-[env(safe-area-inset-bottom,16px)] pt-3 border-t border-white/[0.06]">
                           <div className="flex items-center justify-between mb-4">
-                            <span className="text-white/50 text-sm font-medium">Total</span>
+                            <span className="text-white/50 text-sm font-medium">
+                              Total
+                            </span>
                             <span className="text-white font-bold text-xl">
                               ${cartTotal.toFixed(2)}
                             </span>
@@ -572,7 +599,7 @@ export default function OrderPage() {
           )}
 
           {/* ═══════════ SUBMITTING ═══════════ */}
-          {phase === 'submitting' && (
+          {phase === "submitting" && (
             <motion.div
               key="submitting"
               initial={{ opacity: 0 }}
@@ -581,13 +608,17 @@ export default function OrderPage() {
               className="flex-1 flex flex-col items-center justify-center px-6"
             >
               <div className="w-16 h-16 border-[3px] border-orange-500/20 border-t-orange-500 rounded-full animate-spin mb-5" />
-              <p className="text-white/60 text-sm font-semibold">Placing your order...</p>
-              <p className="text-white/25 text-[11px] mt-1">at {business?.name}</p>
+              <p className="text-white/60 text-sm font-semibold">
+                Placing your order...
+              </p>
+              <p className="text-white/25 text-[11px] mt-1">
+                at {business?.name}
+              </p>
             </motion.div>
           )}
 
           {/* ═══════════ TRACKING ═══════════ */}
-          {phase === 'tracking' && (
+          {phase === "tracking" && (
             <motion.div
               key="tracking"
               initial={{ opacity: 0 }}
@@ -603,10 +634,12 @@ export default function OrderPage() {
               >
                 <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/[0.04] border border-white/[0.08] mb-4">
                   <CheckCircle size={14} className="text-emerald-400" />
-                  <span className="text-white/60 text-xs font-semibold">Order Placed</span>
+                  <span className="text-white/60 text-xs font-semibold">
+                    Order Placed
+                  </span>
                 </div>
                 <h1 className="text-white font-bold text-2xl tracking-tight">
-                  Order #{order?.bookingNumber || '---'}
+                  Order #{order?.bookingNumber || "---"}
                 </h1>
                 <p className="text-white/30 text-sm mt-1">{business?.name}</p>
               </motion.div>
@@ -635,13 +668,16 @@ export default function OrderPage() {
                     const isActive = i <= currentStep;
                     const isCurrent = i === currentStep;
                     return (
-                      <div key={step.key} className="flex flex-col items-center z-10 flex-1">
+                      <div
+                        key={step.key}
+                        className="flex flex-col items-center z-10 flex-1"
+                      >
                         <div
                           className={`w-8 h-8 rounded-full flex items-center justify-center transition-all duration-500 ${
                             isActive
-                              ? 'bg-orange-500 shadow-lg shadow-orange-500/40 progress-dot-active'
-                              : 'bg-white/[0.06] border border-white/[0.08]'
-                          } ${isCurrent ? 'ring-4 ring-orange-500/20' : ''}`}
+                              ? "bg-orange-500 shadow-lg shadow-orange-500/40 progress-dot-active"
+                              : "bg-white/[0.06] border border-white/[0.08]"
+                          } ${isCurrent ? "ring-4 ring-orange-500/20" : ""}`}
                         >
                           {isActive ? (
                             <CheckCircle size={14} className="text-white" />
@@ -651,7 +687,7 @@ export default function OrderPage() {
                         </div>
                         <span
                           className={`text-[11px] font-semibold mt-2 transition-colors ${
-                            isActive ? 'text-white/80' : 'text-white/25'
+                            isActive ? "text-white/80" : "text-white/25"
                           }`}
                         >
                           {step.label}
@@ -686,7 +722,9 @@ export default function OrderPage() {
                   </div>
                 ))}
                 <div className="border-t border-white/[0.06] mt-2 pt-3 flex items-center justify-between">
-                  <span className="text-white/60 text-sm font-semibold">Total</span>
+                  <span className="text-white/60 text-sm font-semibold">
+                    Total
+                  </span>
                   <span className="text-white font-bold text-lg">
                     ${cartTotal.toFixed(2)}
                   </span>
@@ -702,18 +740,20 @@ export default function OrderPage() {
               >
                 <Coffee size={16} className="text-orange-400/60" />
                 <span className="text-white/40 text-sm font-medium">
-                  {trackingStatus === 'pending' || trackingStatus === 'confirmed'
-                    ? 'Your order has been received...'
-                    : trackingStatus === 'arrived' || trackingStatus === 'serving'
-                    ? 'Preparing your order...'
-                    : 'Processing...'}
+                  {trackingStatus === "pending" ||
+                  trackingStatus === "confirmed"
+                    ? "Your order has been received..."
+                    : trackingStatus === "arrived" ||
+                        trackingStatus === "serving"
+                      ? "Preparing your order..."
+                      : "Processing..."}
                 </span>
               </motion.div>
             </motion.div>
           )}
 
           {/* ═══════════ COMPLETED ═══════════ */}
-          {phase === 'completed' && (
+          {phase === "completed" && (
             <motion.div
               key="completed"
               initial={{ opacity: 0 }}
@@ -722,36 +762,60 @@ export default function OrderPage() {
               className="flex-1 flex flex-col items-center justify-center px-6"
             >
               <div ref={celebrationRef} className="text-center">
-                <div data-celebrate className="w-24 h-24 rounded-full bg-gradient-to-br from-emerald-500/20 to-teal-500/10 border-2 border-emerald-500/30 flex items-center justify-center mx-auto mb-6 shadow-[0_0_60px_rgba(16,185,129,0.2)]">
+                <div
+                  data-celebrate
+                  className="w-24 h-24 rounded-full bg-gradient-to-br from-emerald-500/20 to-teal-500/10 border-2 border-emerald-500/30 flex items-center justify-center mx-auto mb-6 shadow-[0_0_60px_rgba(16,185,129,0.2)]"
+                >
                   <PartyPopper size={44} className="text-emerald-400" />
                 </div>
-                <h1 data-celebrate className="text-white text-2xl font-bold mb-2">
+                <h1
+                  data-celebrate
+                  className="text-white text-2xl font-bold mb-2"
+                >
                   Your Order is Ready!
                 </h1>
                 <p data-celebrate className="text-white/40 text-sm mb-2">
                   Order #{order?.bookingNumber}
                 </p>
-                <p data-celebrate className="text-emerald-400/80 text-sm font-medium mb-8">
+                <p
+                  data-celebrate
+                  className="text-emerald-400/80 text-sm font-medium mb-8"
+                >
                   Please pick up your order
                 </p>
 
                 {/* Order summary */}
-                <div data-celebrate className="bg-white/[0.04] backdrop-blur-2xl border border-white/[0.08] rounded-2xl p-5 mb-6 text-left w-full max-w-sm mx-auto">
+                <div
+                  data-celebrate
+                  className="bg-white/[0.04] backdrop-blur-2xl border border-white/[0.08] rounded-2xl p-5 mb-6 text-left w-full max-w-sm mx-auto"
+                >
                   {cartItems.map(({ meal, quantity }) => (
-                    <div key={meal._id} className="flex items-center justify-between py-1.5">
-                      <span className="text-white/60 text-sm">{quantity}x {meal.name}</span>
-                      <span className="text-white/40 text-sm">${(meal.price * quantity).toFixed(2)}</span>
+                    <div
+                      key={meal._id}
+                      className="flex items-center justify-between py-1.5"
+                    >
+                      <span className="text-white/60 text-sm">
+                        {quantity}x {meal.name}
+                      </span>
+                      <span className="text-white/40 text-sm">
+                        ${(meal.price * quantity).toFixed(2)}
+                      </span>
                     </div>
                   ))}
                   <div className="border-t border-white/[0.06] mt-2 pt-2 flex items-center justify-between">
-                    <span className="text-white/60 text-sm font-semibold">Total</span>
-                    <span className="text-white font-bold">${cartTotal.toFixed(2)}</span>
+                    <span className="text-white/60 text-sm font-semibold">
+                      Total
+                    </span>
+                    <span className="text-white font-bold">
+                      ${cartTotal.toFixed(2)}
+                    </span>
                   </div>
                 </div>
 
                 <button
                   data-celebrate
                   onClick={() => navigate(-1)}
+                  aria-label="Go back"
                   className="px-8 py-3 bg-white/[0.06] border border-white/[0.08] rounded-xl text-white/60 text-sm font-medium hover:bg-white/[0.1] transition-all"
                 >
                   Done

@@ -22,33 +22,32 @@ export default function WaitlistStatusPage() {
   const circleRef = useRef(null);
   const glowRef = useRef(null);
 
-  const { on, off } = useSocket(entry ? `waitlist:${entry._id}` : null);
+  const { on, off } = useSocket(entry ? `queue:${entry._id}` : null, token);
 
   // Listen for real-time updates
   useEffect(() => {
-    const handleUpdate = (data) => setEntry(data);
-    const handleApproved = (data) => setEntry(data);
-    const handleRejected = (data) => setEntry(data);
-
-    on('waitlist:updated', handleUpdate);
-    on('waitlist:approved', handleApproved);
-    on('waitlist:rejected', handleRejected);
-
-    return () => {
-      off('waitlist:updated', handleUpdate);
-      off('waitlist:approved', handleApproved);
-      off('waitlist:rejected', handleRejected);
+    const handleEntry = (data) => setEntry(previous => ({ ...previous, ...(data.entry || data) }));
+    const handleComplete = () => setEntry(previous => ({ ...previous, status: 'completed' }));
+    const listeners = {
+      'queue:called': handleEntry,
+      'queue:approved': handleEntry,
+      'queue:rejected': handleEntry,
+      'queue:skipped': handleEntry,
+      'queue:cancelled': handleEntry,
+      'queue:completed': handleComplete,
     };
+    Object.entries(listeners).forEach(([event, handler]) => on(event, handler));
+    return () => Object.entries(listeners).forEach(([event, handler]) => off(event, handler));
   }, [on, off]);
 
   // Fetch position
   useEffect(() => {
     if (!entry?._id) return;
-    const fetchPos = () => api.get(`/public/waitlist/position/${entry._id}`).then(({ data }) => setPosition(data)).catch(() => {});
+    const fetchPos = () => api.get(`/public/waitlist/position/${entry._id}`, { headers: { 'X-Access-Token': token } }).then(({ data }) => setPosition(data)).catch(() => {});
     fetchPos();
     const interval = setInterval(fetchPos, 15000);
     return () => clearInterval(interval);
-  }, [entry?._id, entry?.status]);
+  }, [entry?._id, entry?.status, token]);
 
   // Animate SVG circle
   useEffect(() => {

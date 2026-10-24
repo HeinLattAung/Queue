@@ -2,11 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { gsap } from 'gsap';
-import {
-  MapPin, Clock, ArrowRight, AlertTriangle, Loader2,
-  Minus, Plus, CheckCircle, Shield, Navigation, Ticket,
-  Users, Sparkles, ChevronRight, QrCode, ChevronDown, ChevronUp,
-} from 'lucide-react';
+import { MapPin, Clock, ArrowRight, AlertTriangle, Loader2, Minus, Plus, CheckCircle, Shield, Navigation, Ticket, Users, CircleDot, ChevronRight, QrCode, ChevronDown, ChevronUp } from 'lucide-react';
 import QRX from '@qr-x/react';
 import api from '../../services/api';
 import useAuthStore from '../../store/authStore';
@@ -386,7 +382,7 @@ export default function JoinQueuePage() {
                       <div className="bg-gradient-to-r from-orange-500 to-amber-500 px-6 py-5">
                         <div className="flex items-center justify-between mb-3">
                           <div className="flex items-center gap-2">
-                            <Sparkles size={16} className="text-white/80" />
+                            <CircleDot size={16} className="text-white/80" />
                             <span className="text-white/80 text-xs font-semibold uppercase tracking-wider">Queue Ticket</span>
                           </div>
                           <div className="flex items-center gap-1.5">
@@ -476,7 +472,7 @@ export default function JoinQueuePage() {
                                         data={result.accessToken}
                                         level="H"
                                         shapes={{ body: 'circle', eyeball: 'rounded', eyeframe: 'rounded' }}
-                                        gradient={{ type: 'linear', rotate: 45, colors: ['#f97316', '#ea580c'] }}
+                                        gradient={{ type: 'linear', rotate: 45, colors: ['#24583f', '#173b2b'] }}
                                         width={180}
                                         height={180}
                                       />

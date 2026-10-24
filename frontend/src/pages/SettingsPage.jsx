@@ -25,7 +25,7 @@ export default function SettingsPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1.5 mb-6 bg-gray-100/60 p-1 rounded-xl w-fit relative">
+      <div className="settings-tabs flex gap-1.5 mb-6 bg-gray-100/60 p-1 rounded-xl relative">
         {tabs.map(({ id, label, icon: Icon }) => (
           <button key={id} onClick={() => setTab(id)}
             className="relative flex items-center gap-2 px-4 py-2.5 rounded-lg text-[13px] font-semibold transition-colors duration-200 z-10"
@@ -103,7 +103,7 @@ function OpeningHoursSection() {
 
       <div className="space-y-3">
         {hours.map((h, i) => (
-          <div key={h.day} className={`flex items-center gap-4 px-4 py-3 rounded-xl transition-colors ${h.isClosed ? 'bg-gray-50/50' : 'hover:bg-gray-50/50'}`}>
+          <div key={h.day} className={`opening-hours-row flex items-center gap-4 px-4 py-3 rounded-xl transition-colors ${h.isClosed ? 'bg-gray-50/50' : 'hover:bg-gray-50/50'}`}>
             <span className="w-28 text-[13px] font-semibold capitalize text-gray-700">{h.day}</span>
             <label className="flex items-center gap-2 cursor-pointer">
               <div className={`relative w-10 h-5 rounded-full transition-colors ${h.isClosed ? 'bg-gray-200' : 'bg-primary-500'}`}
@@ -115,7 +115,7 @@ function OpeningHoursSection() {
               </span>
             </label>
             {!h.isClosed && (
-              <div className="flex items-center gap-2 ml-4">
+              <div className="opening-hours-times flex items-center gap-2 ml-4">
                 <input type="time" value={h.openTime} onChange={e => updateHour(i, 'openTime', e.target.value)}
                   className="px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-[13px] text-gray-700" />
                 <span className="text-gray-300 text-[12px] font-medium">to</span>

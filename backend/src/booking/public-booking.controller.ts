@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Put, Body, Param } from '@nestjs/common';
+import { Controller, Post, Get, Put, Body, Headers, Param } from '@nestjs/common';
 import { BookingService } from './booking.service';
 
 @Controller('public/bookings')
@@ -11,8 +11,8 @@ export class PublicBookingController {
   }
 
   @Get(':id/status')
-  async getStatus(@Param('id') id: string) {
-    return this.bookingService.findOne(id);
+  async getStatus(@Param('id') id: string, @Headers('x-access-token') token: string) {
+    return this.bookingService.findStatusWithAccess(id, token);
   }
 
   @Get('access/:token')
