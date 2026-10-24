@@ -4,24 +4,30 @@ require('reflect-metadata');
 const mongoose=require('mongoose');
 const {MongoMemoryServer}=require('mongodb-memory-server');
 const {JwtService}=require('@nestjs/jwt');
-const {WaitlistSchema}=require('../dist/src/waitlist/schemas/waitlist.schema');
-const {BookingSchema}=require('../dist/src/booking/schemas/booking.schema');
-const {BusinessSchema}=require('../dist/src/business/schemas/business.schema');
-const {WaitlistService}=require('../dist/src/waitlist/waitlist.service');
-const {BookingService}=require('../dist/src/booking/booking.service');
-const {BusinessService}=require('../dist/src/business/business.service');
-const {QrTokenService}=require('../dist/src/qr-token/qr-token.service');
+const {WaitlistSchema}=require('../dist/src/modules/waitlist/schemas/waitlist.schema');
+const {BookingSchema}=require('../dist/src/modules/booking/schemas/booking.schema');
+const {BusinessSchema}=require('../dist/src/modules/business/schemas/business.schema');
+const {WaitlistService}=require('../dist/src/modules/waitlist/waitlist.service');
+const {BookingService}=require('../dist/src/modules/booking/booking.service');
+const {BusinessService}=require('../dist/src/modules/business/business.service');
+const {QrTokenService}=require('../dist/src/modules/qr-token/qr-token.service');
 
 test('real MongoDB regression checks', {timeout:60000},async t=>{
   let uri=process.env.QA_MONGODB_URI;
+  let server;
   if (uri && !/^mongodb:\/\/(127\.0\.0\.1|localhost):[0-9]+\/?$/.test(uri)) throw new Error('QA_MONGODB_URI must point to a local disposable MongoDB server');
   if (!uri) {
-    const server=await MongoMemoryServer.create();
-    t.after(()=>server.stop());
+    server=await MongoMemoryServer.create();
     uri=server.getUri();
   }
   const db=await mongoose.createConnection(uri,{dbName:`queue_qa_regression_${process.pid}_${Date.now()}`}).asPromise();
-  t.after(async()=>{await db.dropDatabase();await db.close();});
+  t.after(async()=>{
+    try { await db.dropDatabase(); }
+    finally {
+      try { await db.close(); }
+      finally { if (server) await server.stop(); }
+    }
+  });
   const Waitlist=db.model('Waitlist',WaitlistSchema);
   const Booking=db.model('Booking',BookingSchema);
   const Business=db.model('Business',BusinessSchema);

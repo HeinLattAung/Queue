@@ -1,18 +1,18 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
-import { AuthModule } from './auth/auth.module';
-import { BusinessModule } from './business/business.module';
-import { CustomerModule } from './customer/customer.module';
-import { BookingModule } from './booking/booking.module';
-import { WaitlistModule } from './waitlist/waitlist.module';
-import { StaffModule } from './staff/staff.module';
-import { TableModule } from './table/table.module';
-import { MealModule } from './meal/meal.module';
-import { ProfileModule } from './profile/profile.module';
-import { StatsModule } from './stats/stats.module';
-import { EventsModule } from './events/events.module';
-import { QrTokenModule } from './qr-token/qr-token.module';
-import { AvailabilityModule } from './availability/availability.module';
+import { AuthModule } from './modules/auth/auth.module';
+import { BusinessModule } from './modules/business/business.module';
+import { CustomerModule } from './modules/customer/customer.module';
+import { BookingModule } from './modules/booking/booking.module';
+import { WaitlistModule } from './modules/waitlist/waitlist.module';
+import { StaffModule } from './modules/staff/staff.module';
+import { TableModule } from './modules/table/table.module';
+import { MealModule } from './modules/meal/meal.module';
+import { ProfileModule } from './modules/profile/profile.module';
+import { StatsModule } from './modules/stats/stats.module';
+import { EventsModule } from './modules/events/events.module';
+import { QrTokenModule } from './modules/qr-token/qr-token.module';
+import { AvailabilityModule } from './modules/availability/availability.module';
 @Module({
   imports: [
     MongooseModule.forRootAsync({

@@ -6,13 +6,13 @@ const { Module } = require('@nestjs/common');
 const { NestFactory } = require('@nestjs/core');
 const { JwtService } = require('@nestjs/jwt');
 const { io } = require('socket.io-client');
-const { RoomAccessService } = require('../dist/src/events/room-access.service');
-const { EventsGateway } = require('../dist/src/events/events.gateway');
-const { QrTokenService } = require('../dist/src/qr-token/qr-token.service');
-const { BookingService } = require('../dist/src/booking/booking.service');
-const { WaitlistService } = require('../dist/src/waitlist/waitlist.service');
-const { PublicBookingController } = require('../dist/src/booking/public-booking.controller');
-const { PublicWaitlistController } = require('../dist/src/waitlist/public-waitlist.controller');
+const { RoomAccessService } = require('../dist/src/modules/events/room-access.service');
+const { EventsGateway } = require('../dist/src/modules/events/events.gateway');
+const { QrTokenService } = require('../dist/src/modules/qr-token/qr-token.service');
+const { BookingService } = require('../dist/src/modules/booking/booking.service');
+const { WaitlistService } = require('../dist/src/modules/waitlist/waitlist.service');
+const { PublicBookingController } = require('../dist/src/modules/booking/public-booking.controller');
+const { PublicWaitlistController } = require('../dist/src/modules/waitlist/public-waitlist.controller');
 
 const shop = 'a'.repeat(24);
 const otherShop = 'b'.repeat(24);
@@ -134,7 +134,7 @@ test('real HTTP and Socket.IO protect status reads, room events, reconnects and 
     let accountToken = jwt.sign({ sub: owner, email: 'owner@test.com', role: 'owner' }, { expiresIn: '1h' });
     global.localStorage = { getItem: () => accountToken };
     // Substitute only the bundler's environment value and dependency URL; run the actual browser module.
-    const source = readFileSync(resolve(__dirname, '../../frontend/src/services/socket.js'), 'utf8')
+    const source = readFileSync(resolve(__dirname, '../../frontend/src/shared/services/socket.js'), 'utf8')
       .replace("'socket.io-client'", JSON.stringify(pathToFileURL(require.resolve('socket.io-client')).href))
       .replace('import.meta.env.VITE_SOCKET_URL', JSON.stringify(base));
     const browser = await import(`data:text/javascript;base64,${Buffer.from(source).toString('base64')}`);

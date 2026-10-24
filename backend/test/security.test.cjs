@@ -3,9 +3,9 @@ const assert = require('node:assert/strict');
 require('reflect-metadata');
 const { getJwtSecret, checkOrigin } = require('../dist/src/common/config/security');
 const { BusinessGuard } = require('../dist/src/common/guards/business.guard');
-const { BookingService } = require('../dist/src/booking/booking.service');
-const { WaitlistService } = require('../dist/src/waitlist/waitlist.service');
-const { JwtStrategy } = require('../dist/src/auth/jwt.strategy');
+const { BookingService } = require('../dist/src/modules/booking/booking.service');
+const { WaitlistService } = require('../dist/src/modules/waitlist/waitlist.service');
+const { JwtStrategy } = require('../dist/src/modules/auth/jwt.strategy');
 const events = { emitToRoom() {} };
 const context = user => ({ switchToHttp: () => ({ getRequest: () => ({ user }) }) });
 

@@ -101,7 +101,7 @@ Run from `backend/`:
 npm run build
 ```
 
-Run `npm test` inside backend/ for the security, access, and MongoDB regression suites. See QA-REPORT.md for local results and known lint limitations; SECURITY-CHANGES.md covers deployment requirements.
+Run `npm test` inside backend/ for the security, access, and MongoDB regression suites. See docs/QA-REPORT.md for local results and known lint limitations; docs/SECURITY-CHANGES.md covers deployment requirements.
 
 ## Repository structure
 
@@ -109,20 +109,23 @@ Run `npm test` inside backend/ for the security, access, and MongoDB regression 
 Queue/
   backend/
     src/
-      auth/          Authentication and user accounts
-      booking/       Reservations and arrival handling
-      waitlist/      Queue management
-      events/        Socket.IO gateway
-      qr-token/      QR and access tokens
-      ...            Other business modules
+      main.ts        API startup
+      app.module.ts  Module composition
+      common/        Shared configuration, guards, decorators, utilities
+      modules/       Business domains (auth, booking, waitlist, events, ...)
+    test/            Security, access, and persistence regression tests
   frontend/
     public/          Manifest, icons, and service worker
     src/
-      components/    Layout and animation components
-      pages/         Admin and customer screens
-      services/      HTTP and Socket.IO clients
-      store/         Client state
+      main.jsx       Browser entry point
+      app/           Route composition and global styles
+      features/      Domain pages and their Zustand stores
+      shared/        Reusable layouts, animation, hooks, API/socket clients
+      assets/        Static source assets
+  docs/              Architecture, security, QA results, and UI notes
 ```
+
+See [architecture guidance](docs/ARCHITECTURE.md) for feature ownership and import conventions.
 
 ## Current limitations and next steps
 
@@ -132,7 +135,7 @@ Queue/
 - Booking management and private Socket.IO rooms enforce authorization. Other legacy management modules still require an ownership review.
 - Production requires a persistent MongoDB URI, a strong JWT secret of at least 32 characters, and an explicit CORS origin allowlist. Deploy the updated frontend and backend together.
 
-See SECURITY-CHANGES.md and QA-REPORT.md for remaining work, migration precautions, and verified customer/admin flows.
+See docs/SECURITY-CHANGES.md and docs/QA-REPORT.md for remaining work, migration precautions, and verified customer/admin flows.
 
 ## Author
 
