@@ -2485,3 +2485,11 @@ body,
     flex: 1;
   }
 }
+
+/* Keep dialog content scrollable without visible scrollbar tracks. */
+.scrollbar-hidden {
+  scrollbar-width: none;
+}
+.scrollbar-hidden::-webkit-scrollbar {
+  display: none;
+}

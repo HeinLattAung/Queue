@@ -165,7 +165,7 @@ export default function QRLinksPage() {
               <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">
                 {modal.signed ? 'Signed URL' : 'Public URL'}
               </p>
-              <p className="text-[12px] text-gray-600 break-all font-mono leading-relaxed max-h-24 overflow-y-auto">
+              <p className="scrollbar-hidden text-[12px] text-gray-600 break-all font-mono leading-relaxed max-h-24 overflow-x-hidden overflow-y-auto">
                 {getModalUrl() || modal.url}
               </p>
             </div>

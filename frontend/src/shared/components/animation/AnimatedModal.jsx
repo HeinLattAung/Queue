@@ -15,7 +15,7 @@ export default function AnimatedModal({ isOpen, onClose, children }) {
         >
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
           <Motion.div
-            className="relative max-w-full max-h-[calc(100dvh-2rem)] overflow-y-auto overscroll-contain"
+            className="scrollbar-hidden relative min-w-0 max-w-full max-h-[calc(100dvh-2rem)] overflow-x-hidden overflow-y-auto overscroll-contain"
             initial={{ opacity: 0, scale: 0.95, y: 8 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 8 }}
