@@ -6,9 +6,10 @@ const useAuthStore = create((set) => ({
   token: localStorage.getItem('token') || null,
   loading: false,
   error: null,
+  errorAction: null,
 
   login: async (email, password) => {
-    set({ loading: true, error: null });
+    set({ loading: true, error: null, errorAction: 'login' });
     try {
       // Clear any stale session before attempting login.
       localStorage.removeItem('token');
@@ -26,7 +27,7 @@ const useAuthStore = create((set) => ({
   },
 
   signup: async (formData) => {
-    set({ loading: true, error: null });
+    set({ loading: true, error: null, errorAction: 'signup' });
     try {
       const { data } = await api.post('/auth/signup', formData);
       localStorage.setItem('token', data.token);
@@ -40,7 +41,7 @@ const useAuthStore = create((set) => ({
   },
 
   customerSignup: async (formData) => {
-    set({ loading: true, error: null });
+    set({ loading: true, error: null, errorAction: 'customerSignup' });
     try {
       const { data } = await api.post('/auth/customer/signup', formData);
       localStorage.setItem('token', data.token);

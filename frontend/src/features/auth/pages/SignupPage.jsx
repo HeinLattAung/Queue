@@ -17,7 +17,10 @@ export default function SignupPage({ guest = false }) {
     location: "",
     phone: "",
   });
-  const { signup, customerSignup, loading, error } = useAuthStore();
+  const { signup, customerSignup, loading: authLoading, error: authError, errorAction } = useAuthStore();
+  const action = guest ? 'customerSignup' : 'signup';
+  const loading = authLoading && errorAction === action;
+  const error = errorAction === action ? authError : null;
   const navigate = useNavigate();
   const fields = [
     {

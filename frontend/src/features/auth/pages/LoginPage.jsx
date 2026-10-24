@@ -5,7 +5,9 @@ import useAuthStore from "../store/authStore";
 export default function LoginPage({ guest = false }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const { login, loading, error } = useAuthStore();
+  const { login, loading: authLoading, error: authError, errorAction } = useAuthStore();
+  const loading = authLoading && errorAction === 'login';
+  const error = errorAction === 'login' ? authError : null;
   const navigate = useNavigate();
   const submit = async (event) => {
     event.preventDefault();

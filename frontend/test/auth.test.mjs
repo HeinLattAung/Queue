@@ -46,7 +46,20 @@ test('authentication recovers from stalled requests and distinguishes server fai
   await t.test('invalid credentials preserve the server message', async () => {
     mode='invalid'; assert.equal(await auth.getState().login('test@example.test','wrong'),false);
     assert.equal(auth.getState().error,'Invalid credentials');
+    assert.equal(auth.getState().errorAction,'login');
     assert.equal(auth.getState().loading,false);
+  });
+  await t.test('signup failures are scoped separately from previous login failures', async () => {
+    mode='unavailable';
+    const pending = auth.getState().signup({});
+    assert.equal(auth.getState().error,null);
+    assert.equal(auth.getState().errorAction,'signup');
+    assert.equal(await pending,false);
+    assert.equal(auth.getState().errorAction,'signup');
+    assert.match(auth.getState().error,/temporarily unavailable/);
+    mode='stall';
+    await auth.getState().customerSignup({});
+    assert.equal(auth.getState().errorAction,'customerSignup');
   });
   await t.test('server unavailability has a distinct retry message', async () => {
     mode='unavailable'; assert.equal(await auth.getState().login('test@example.test','password'),false);
