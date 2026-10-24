@@ -1,0 +1,139 @@
+# Queue — Restaurant Queue & Reservation Management
+
+A full-stack restaurant application with an admin portal and customer-facing flows for joining queues, making reservations, and tracking status updates.
+
+## Features
+
+- Admin dashboard, booking calendar, customer records, and statistics pages.
+- Customer signup and login, waitlist entry, reservations, and meal selection.
+- QR entry links and booking ticket scanning for arrival confirmation.
+- Socket.IO events for queue and booking updates.
+- Restaurant settings, staff, table, and menu management modules.
+- Web app manifest and a service worker with network-first caching of selected static assets.
+
+## Technology
+
+| Layer | Tools |
+| --- | --- |
+| Frontend | React 19, JavaScript, Vite 7, React Router |
+| UI | Tailwind CSS 4, Lucide, Motion, GSAP, Recharts |
+| Client state and HTTP | Zustand, Axios |
+| Backend | NestJS 10, TypeScript |
+| Database | MongoDB, Mongoose |
+| Authentication | JWT, Passport, bcrypt |
+| Real-time communication | Socket.IO |
+
+## Architecture
+
+The React client calls the NestJS REST API under `/api`. NestJS modules handle authentication, business settings, bookings, waitlists, customers, staff, tables, meals, statistics, availability, and QR tokens. Mongoose stores application data in MongoDB.
+
+Socket.IO delivers updates to business, booking, and queue rooms. The client tracks active rooms and rejoins them after reconnecting; it also exposes reconnect callbacks for fetching current REST state.
+
+```text
+React client -- REST /api --> NestJS modules --> MongoDB
+React client <-- Socket.IO --> NestJS event gateway
+```
+
+## Run locally
+
+Use Node.js 22.12+ and npm. For persistent data, provide a running MongoDB instance or MongoDB Atlas connection string.
+
+```bash
+git clone https://github.com/HeinLattAung/Queue.git
+cd Queue
+```
+
+### 1. Configure the backend
+
+Create `backend/.env` using `backend/.env.example` as a reference:
+
+```dotenv
+MONGODB_URI=mongodb://127.0.0.1:27017/restaurant-db
+JWT_SECRET=replace-with-a-long-random-secret
+JWT_EXPIRATION=7d
+PORT=3000
+CORS_ORIGIN=http://localhost:5173
+```
+
+Replace the MongoDB URI if using Atlas. Keep `.env` files out of version control.
+
+```bash
+cd backend
+npm ci
+npm run start:dev
+```
+
+The API listens at `http://localhost:3000/api`.
+
+For a temporary local demo, omit `MONGODB_URI` entirely. The backend then starts `mongodb-memory-server` and attempts to seed an admin account, a customer account, and menu items. This mode may download a MongoDB binary on first use, requires development dependencies, and does not retain data after restart. The seed credentials are printed in the backend console and apply only to this temporary mode.
+
+### 2. Configure the frontend
+
+Create `frontend/.env`:
+
+```dotenv
+VITE_API_URL=http://localhost:3000/api
+VITE_SOCKET_URL=http://localhost:3000
+```
+
+In a second terminal, starting from the repository root:
+
+```bash
+cd frontend
+npm ci
+npm run dev
+```
+
+Open `http://localhost:5173`. Use `/signup` for a restaurant admin account or `/customer/signup` for a customer account.
+
+## Available checks
+
+Run from `frontend/`:
+
+```bash
+npm run lint
+npm run build
+```
+
+Run from `backend/`:
+
+```bash
+npm run build
+```
+
+Neither package currently defines an automated test script. These commands describe available checks; they do not represent published passing results or test coverage.
+
+## Repository structure
+
+```text
+Queue/
+  backend/
+    src/
+      auth/          Authentication and user accounts
+      booking/       Reservations and arrival handling
+      waitlist/      Queue management
+      events/        Socket.IO gateway
+      qr-token/      QR and access tokens
+      ...            Other business modules
+  frontend/
+    public/          Manifest, icons, and service worker
+    src/
+      components/    Layout and animation components
+      pages/         Admin and customer screens
+      services/      HTTP and Socket.IO clients
+      store/         Client state
+```
+
+## Current limitations and next steps
+
+- The service worker caches selected successful static responses. It does not implement offline booking writes, an IndexedDB sync queue, or guaranteed offline navigation.
+- Socket reconnection does not establish conflict-free synchronization for offline mutations.
+- Automated tests, measured performance results, and concurrent booking guarantees are not documented here as completed work.
+- Before production use, review authorization for REST resources and Socket.IO room membership. The current gateway accepts client-supplied room names without a membership check.
+- The REST CORS callback currently permits unrecognized origins even when `CORS_ORIGIN` is configured; enforce the intended allowlist before production deployment.
+
+Suggested next work: add tests for booking and queue transitions, verify concurrent requests, and validate the main customer and admin flows end to end.
+
+## Author
+
+[Hein Latt Aung](https://github.com/HeinLattAung)
